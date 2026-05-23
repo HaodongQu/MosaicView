@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "butterfly-viewer"
+version = "1.1.0"
+description = "PyQt5 desktop image comparison tool with synchronized views and sliding overlays."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE.txt" }
+authors = [
+  { name = "Lars Maxfield" }
+]
+dependencies = [
+  "PyQt5>=5.15,<6",
+  "piexif>=1.1.3",
+]
+
+[project.urls]
+Homepage = "https://github.com/olive-groves/butterfly_viewer"
+
+[project.scripts]
+butterfly-viewer = "butterfly_viewer.app.bootstrap:main"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["butterfly_viewer*"]
+
+[tool.setuptools.package-data]
+butterfly_viewer = [
+  "icons.qrc",
+  "icons/*",
+]
