@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""QMdiArea with drag-and-drop functions, vertical/horizontal window tiling, and keyboard shortcuts.
+"""QMdiArea with drag-and-drop functions and vertical/horizontal window tiling.
 
 Not intended as a script.
 
@@ -10,27 +10,22 @@ Creates the multi document interface (MDI) widget for the Butterfly Viewer.
 
 
 
-from PyQt5 import QtWidgets, QtCore, QtGui
+from PyQt5 import QtWidgets, QtCore
 
 
 
 class QMdiAreaWithCustomSignals(QtWidgets.QMdiArea):
-    """Extend QMdiArea with drag-and-drop functions, vertical/horizontal window tiling, and keyboard shortcuts.
+    """Extend QMdiArea with drag-and-drop functions and vertical/horizontal window tiling.
 
     Instantiate without input.
     
     Features:
-        Signals for drag-and-drop, subwindow events, shortcut keys.
+        Signals for drag-and-drop and subwindow events.
         Methods for arranging the subwindows vertically and horizontally, and to track the history of the arrangement.
     """
 
     file_path_dragged_and_dropped = QtCore.pyqtSignal(str)
     file_path_dragged = QtCore.pyqtSignal(bool)
-    shortcut_escape_was_activated = QtCore.pyqtSignal()
-    shortcut_f_was_activated = QtCore.pyqtSignal()
-    shortcut_h_was_activated = QtCore.pyqtSignal()
-    shortcut_ctrl_c_was_activated = QtCore.pyqtSignal()
-
     first_subwindow_was_opened = QtCore.pyqtSignal()
     last_remaining_subwindow_was_closed = QtCore.pyqtSignal()
 
@@ -42,18 +37,6 @@ class QMdiAreaWithCustomSignals(QtWidgets.QMdiArea):
         self.last_tile_method = None
         self.are_there_any_subwindows_open = False
         self.most_recently_activated_subwindow = None
-
-        self.escape_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Escape"), self)
-        self.escape_shortcut.activated.connect(self.shortcut_escape_was_activated)
-
-        self.f_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("f"), self)
-        self.f_shortcut.activated.connect(self.shortcut_f_was_activated)
-
-        self.h_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("h"), self)
-        self.h_shortcut.activated.connect(self.shortcut_h_was_activated)
-
-        self.ctrl_c_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+c"), self)
-        self.ctrl_c_shortcut.activated.connect(self.shortcut_ctrl_c_was_activated)
 
         self.tile_subwindows_horizontally()
 

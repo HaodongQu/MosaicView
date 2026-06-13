@@ -56,6 +56,45 @@ butterfly-viewer
 python butterfly_viewer/butterfly_viewer.py
 ```
 
+## 打包为 macOS App
+
+当前项目已提供 PyInstaller 配置，可打包成可双击运行的 `.app`：
+
+```bash
+cd /Users/halley/Project/butterfly_viewer
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -U pip
+python -m pip install -e .
+python -m pip install pyinstaller
+python -m PyInstaller --noconfirm ./packaging/butterfly-viewer-macos.spec
+```
+
+生成结果：
+
+```text
+dist/Butterfly Viewer.app
+```
+
+启动打包后的 App：
+
+```bash
+open "dist/Butterfly Viewer.app"
+```
+
+如果需要干净重打包：
+
+```bash
+rm -rf build dist
+python -m PyInstaller --noconfirm packaging/butterfly-viewer-macos.spec
+```
+
+说明：
+
+- macOS App 需要在 macOS 上打包。
+- Apple Silicon Python 打出的包适合 Apple Silicon Mac；如需 Intel Mac 支持，需要使用 x86_64 Python 打包。
+- 如果要分发给其他电脑，macOS 可能还需要代码签名和 notarization。
+
 ## 常见用法
 
 直接启动程序：

@@ -40,6 +40,8 @@ class ImageLabel(QtWidgets.QLabel):
 
         # self.setMargin(4)
         self.setAlignment(QtCore.Qt.AlignCenter)
+        self.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored)
+        self.setMinimumSize(0, 0)
 
         if text:
             self.setText(text)
@@ -48,37 +50,38 @@ class ImageLabel(QtWidgets.QLabel):
 
 
     def setPixmap(self, image):
-        """QPixmap: Extend setPixmap() to also set style and size, and execute supporting functions."""
-        size = self.size()
+        """QPixmap: Extend setPixmap() to update the preview without changing the drop-zone size."""
         self.IS_OCCUPIED = True
         self.original_pixmap = image
         self.set_pixmap_to_label_size()
         self.set_stylesheet_occupied(self.IS_OCCUPIED)
         self.became_occupied.emit(True)
-        self.setFixedSize(size)
         
     def set_pixmap_to_label_size(self):
         """Resize and set pixmap to the label's size, thus maintaining the label's size and shape."""
-        w = self.width_contents()
-        h = self.height_contents()
+        w = max(1, self.width_contents())
+        h = max(1, self.height_contents())
         p = self.original_pixmap
         p = p.scaled(w, h, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
         super().setPixmap(p)
+
+    def resizeEvent(self, event):
+        """Keep an occupied preview fitted to the layout-controlled drop-zone size."""
+        super().resizeEvent(event)
+        if self.IS_OCCUPIED and hasattr(self, "original_pixmap"):
+            self.set_pixmap_to_label_size()
             
     def clear(self):
-        """Extend clear() to also set style and size, reduce memory."""
+        """Extend clear() to also reset style and release the preview pixmap."""
         self.IS_OCCUPIED = False
         self.set_stylesheet_occupied(self.IS_OCCUPIED)
 
-        if self.original_pixmap:
+        if hasattr(self, "original_pixmap"):
             del self.original_pixmap # Remove from memory
             
         super().clear()
 
         self.became_occupied.emit(False)
-
-        self.setMinimumSize(QtCore.QSize(0,0))
-        self.setMinimumSize(QtCore.QSize(QtWidgets.QWIDGETSIZE_MAX,QtWidgets.QWIDGETSIZE_MAX))
     
     
     def width_contents(self):
@@ -192,6 +195,7 @@ class DragDropImageLabel(QtWidgets.QWidget):
         super().__init__()
         
         self.file_path = None
+        self.loaded_pixmap = None
         self.show_filepath_while_loading = False
 
         self.text_default = text_default
@@ -294,10 +298,19 @@ class DragDropImageLabel(QtWidgets.QWidget):
         """bool: Set whether an imaged may be added (dragged and dropped) into the widget."""
         self.image_label_child.IS_ADDABLE = boolean
         self.image_label_child.setEnabled(boolean)
-        self.open_pushbutton.setEnabled(boolean)
+        if self.show_pushbuttons:
+            self.open_pushbutton.setEnabled(boolean and self.open_pushbutton.isVisible())
         self.setAcceptDrops(boolean)
         self.filename_label.setEnabled(boolean)
         self.image_label_child.set_stylesheet_addable(boolean)
+
+    def set_open_button_visible(self, boolean):
+        """Show or hide the image picker button without affecting clear controls."""
+        if not self.show_pushbuttons:
+            return
+
+        self.open_pushbutton.setVisible(boolean)
+        self.open_pushbutton.setEnabled(boolean and self.image_label_child.IS_ADDABLE)
     
     
     def dragEnterEvent(self, event):
@@ -356,9 +369,17 @@ class DragDropImageLabel(QtWidgets.QWidget):
     
     def set_image(self, pixmap):
         """QPixmap: Scale and set preview of image; set status of clear button."""
-        self.image_label_child.setPixmap(pixmap.scaled(self.MAX_DIMENSION_FOR_IMAGE_IN_LABEL, self.MAX_DIMENSION_FOR_IMAGE_IN_LABEL, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation))
+        self.image_label_child.setPixmap(pixmap)
         self.clear_pushbutton.setEnabled(True)
         self.clear_pushbutton.setVisible(True)
+
+    def set_display_pixmap(self, pixmap):
+        """Display a specific preview pixmap without changing the underlying file path."""
+        if pixmap is None:
+            return
+        blocker = QtCore.QSignalBlocker(self.image_label_child)
+        self.set_image(pixmap)
+        del blocker
     
     def load_image(self, file_path):
         """str: Load image from filepath with loading grayout; set filename text.
@@ -378,6 +399,14 @@ class DragDropImageLabel(QtWidgets.QWidget):
         if angle:
             pixmap = pixmap.transformed(QtGui.QTransform().rotate(angle))
 
+        pixmap = pixmap.scaled(
+            self.MAX_DIMENSION_FOR_IMAGE_IN_LABEL,
+            self.MAX_DIMENSION_FOR_IMAGE_IN_LABEL,
+            QtCore.Qt.KeepAspectRatio,
+            QtCore.Qt.SmoothTransformation,
+        )
+
+        self.loaded_pixmap = pixmap
         self.set_image(pixmap)
         self.set_filename_label(file_path)
         self.file_path = file_path
@@ -411,6 +440,7 @@ class DragDropImageLabel(QtWidgets.QWidget):
             
         self.set_text(self.text_default)
         self.file_path = None
+        self.loaded_pixmap = None
         self.clear_pushbutton.setEnabled(False)
         self.clear_pushbutton.setVisible(False)
         self.filename_label.setText("No filename available")
@@ -455,6 +485,7 @@ class FourDragDropImageLabel(QtWidgets.QFrame):
 
     will_start_loading = QtCore.pyqtSignal(bool, str)
     has_stopped_loading = QtCore.pyqtSignal(bool)
+    MINIMUM_PREVIEW_AREA_HEIGHT = 240
 
     def __init__(self):
         super().__init__()
@@ -470,6 +501,7 @@ class FourDragDropImageLabel(QtWidgets.QFrame):
             ".ico", ".cur"]
 
         self.setAcceptDrops(True)
+        self.setMinimumHeight(self.MINIMUM_PREVIEW_AREA_HEIGHT)
 
         main_layout = QtWidgets.QGridLayout()
         

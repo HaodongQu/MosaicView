@@ -29,7 +29,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 
 try:
     from .splitview import SplitView
-    from .panels import SplitViewCreator, ImageStatsPanel
+    from .panels import SplitViewCreator, ImageStatsPanel, FileBrowserPanel
     from .mdi import QMdiAreaWithCustomSignals
     from ..aux_functions import strippedName, toBool, determineSyncSenderDimension, determineSyncAdjustmentFactor
     from ..aux_buttons import ViewerButton
@@ -39,7 +39,7 @@ try:
     from .. import icons_rc
 except ImportError:
     from ui.splitview import SplitView
-    from ui.panels import SplitViewCreator, ImageStatsPanel
+    from ui.panels import SplitViewCreator, ImageStatsPanel, FileBrowserPanel
     from ui.mdi import QMdiAreaWithCustomSignals
     from aux_functions import strippedName, toBool, determineSyncSenderDimension, determineSyncAdjustmentFactor
     from aux_buttons import ViewerButton
@@ -134,12 +134,20 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         self._mdiArea = QMdiAreaWithCustomSignals()
         self._mdiArea.file_path_dragged.connect(self.display_dragged_grayout)
         self._mdiArea.file_path_dragged_and_dropped.connect(self.load_from_dragged_and_dropped_file)
-        self._mdiArea.shortcut_escape_was_activated.connect(self.set_fullscreen_off)
-        self._mdiArea.shortcut_f_was_activated.connect(self.toggle_fullscreen)
-        self._mdiArea.shortcut_h_was_activated.connect(self.toggle_interface)
-        self._mdiArea.shortcut_ctrl_c_was_activated.connect(self.copy_view)
         self._mdiArea.first_subwindow_was_opened.connect(self.on_first_subwindow_was_opened)
         self._mdiArea.last_remaining_subwindow_was_closed.connect(self.on_last_remaining_subwindow_was_closed)
+
+        self.escape_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Escape"), self)
+        self.escape_shortcut.activated.connect(self.set_fullscreen_off)
+
+        self.f_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("f"), self)
+        self.f_shortcut.activated.connect(self.toggle_fullscreen)
+
+        self.h_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("h"), self)
+        self.h_shortcut.activated.connect(self.toggle_interface)
+
+        self.ctrl_c_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+c"), self)
+        self.ctrl_c_shortcut.activated.connect(self.copy_view)
 
         self._mdiArea.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
         self._mdiArea.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
@@ -152,14 +160,13 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         self._label_mouse.adjustSize()
         self._label_mouse.setVisible(True)
         self._label_mouse.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        self._label_mouse.setStyleSheet("QLabel {color: palette(text); background-color: palette(base); border: 1px solid palette(mid); padding: 0.5em 0.7em; font-size: 8pt; border-radius: 0.25em; }")
+        self._label_mouse.setStyleSheet("QLabel { color: palette(text); background-color: rgba(255, 255, 255, 0.06); border: 1px solid palette(mid); padding: 0.5em 0.7em; font-size: 8pt; border-radius: 0.45em; }")
 
         self._splitview_creator = SplitViewCreator()
         self._splitview_creator.clicked_create_splitview_pushbutton.connect(self.on_create_splitview)
         layout_mdiarea_topleft = QtWidgets.QVBoxLayout()
         layout_mdiarea_topleft.setContentsMargins(0, 0, 0, 0)
         layout_mdiarea_topleft.setSpacing(8)
-        layout_mdiarea_topleft.addWidget(self._label_mouse)
         layout_mdiarea_topleft.addWidget(self._splitview_creator)
         self.interface_mdiarea_topleft = QtWidgets.QWidget()
         self.interface_mdiarea_topleft.setLayout(layout_mdiarea_topleft)
@@ -361,15 +368,32 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         self.image_workspace = QtWidgets.QWidget()
         self.image_workspace.setLayout(layout_mdiarea)
 
+        sidebar_header = QtWidgets.QFrame()
+        sidebar_header.setStyleSheet("QFrame { background: palette(base); border: 1px solid palette(mid); border-radius: 0.8em; }")
+        sidebar_header_layout = QtWidgets.QVBoxLayout()
+        sidebar_header_layout.setContentsMargins(14, 14, 14, 14)
+        sidebar_header_layout.setSpacing(10)
+        sidebar_title = QtWidgets.QLabel("Butterfly Viewer")
+        sidebar_title.setStyleSheet("QLabel { font-size: 14pt; font-weight: bold; }")
+        sidebar_header_layout.addWidget(sidebar_title)
+        sidebar_header_layout.addWidget(self._label_mouse)
+        sidebar_header.setLayout(sidebar_header_layout)
+
         sidebar_section_tools = QtWidgets.QFrame()
-        sidebar_section_tools.setStyleSheet("QFrame {background: palette(window); border: 1px solid palette(mid); border-radius: 0.5em;}")
+        sidebar_section_tools.setStyleSheet("QFrame { background: palette(base); border: 1px solid palette(mid); border-radius: 0.7em; }")
         sidebar_section_tools_layout = QtWidgets.QVBoxLayout()
-        sidebar_section_tools_layout.setContentsMargins(12, 12, 12, 12)
+        sidebar_section_tools_layout.setContentsMargins(14, 14, 14, 14)
         sidebar_section_tools_layout.setSpacing(10)
         sidebar_section_tools_title = QtWidgets.QLabel("Viewer Controls")
-        sidebar_section_tools_title.setStyleSheet("QLabel { font-size: 10pt; font-weight: bold; }")
+        sidebar_section_tools_title.setStyleSheet("QLabel { font-size: 11pt; font-weight: bold; }")
+        sidebar_session_label = QtWidgets.QLabel("Session")
+        sidebar_session_label.setStyleSheet("QLabel { color: palette(mid); font-size: 8pt; font-weight: bold; }")
+        sidebar_canvas_label = QtWidgets.QLabel("Canvas")
+        sidebar_canvas_label.setStyleSheet("QLabel { color: palette(mid); font-size: 8pt; font-weight: bold; }")
         sidebar_section_tools_layout.addWidget(sidebar_section_tools_title)
+        sidebar_section_tools_layout.addWidget(sidebar_session_label)
         sidebar_section_tools_layout.addWidget(self.interface_mdiarea_bottomright_horizontal)
+        sidebar_section_tools_layout.addWidget(sidebar_canvas_label)
         sidebar_section_tools_layout.addWidget(self.interface_mdiarea_bottomright_vertical)
         sidebar_section_tools.setLayout(sidebar_section_tools_layout)
 
@@ -377,15 +401,11 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         sidebar_layout = QtWidgets.QVBoxLayout()
         sidebar_layout.setContentsMargins(16, 16, 16, 16)
         sidebar_layout.setSpacing(16)
-        sidebar_title = QtWidgets.QLabel("Butterfly Viewer")
-        sidebar_title.setStyleSheet("QLabel { font-size: 14pt; font-weight: bold; }")
-        sidebar_subtitle = QtWidgets.QLabel("Controls stay here. The image area on the right remains unobstructed.")
-        sidebar_subtitle.setWordWrap(True)
-        sidebar_subtitle.setStyleSheet("QLabel { color: palette(mid); font-size: 9pt; }")
-        sidebar_layout.addWidget(sidebar_title)
-        sidebar_layout.addWidget(sidebar_subtitle)
+        sidebar_layout.addWidget(sidebar_header)
         sidebar_layout.addWidget(self.interface_mdiarea_topleft)
         sidebar_layout.addWidget(sidebar_section_tools)
+        self.image_stats_panel = ImageStatsPanel()
+        sidebar_layout.addWidget(self.image_stats_panel)
         sidebar_layout.addStretch(1)
         self.sidebar_content.setLayout(sidebar_layout)
 
@@ -398,32 +418,47 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         self.sidebar_panel = QtWidgets.QFrame()
         self.sidebar_panel.setObjectName("sidebarPanel")
         self.sidebar_panel.setMinimumWidth(360)
-        self.sidebar_panel.setMaximumWidth(420)
         self.sidebar_panel.setStyleSheet("QFrame#sidebarPanel { background: palette(window); border-right: 1px solid palette(mid); }")
         sidebar_panel_layout = QtWidgets.QVBoxLayout()
         sidebar_panel_layout.setContentsMargins(0, 0, 0, 0)
         sidebar_panel_layout.addWidget(self.sidebar_scroll)
         self.sidebar_panel.setLayout(sidebar_panel_layout)
 
-        self.image_stats_panel = ImageStatsPanel()
+        self.file_browser_panel = FileBrowserPanel()
+        self.file_browser_panel.file_activated.connect(self.open_file_from_browser)
 
-        self.stats_sidebar_panel = QtWidgets.QFrame()
-        self.stats_sidebar_panel.setObjectName("statsSidebarPanel")
-        self.stats_sidebar_panel.setMinimumWidth(280)
-        self.stats_sidebar_panel.setMaximumWidth(360)
-        self.stats_sidebar_panel.setStyleSheet("QFrame#statsSidebarPanel { background: palette(window); border-left: 1px solid palette(mid); }")
-        stats_sidebar_layout = QtWidgets.QVBoxLayout()
-        stats_sidebar_layout.setContentsMargins(16, 16, 16, 16)
-        stats_sidebar_layout.addWidget(self.image_stats_panel)
-        stats_sidebar_layout.addStretch(1)
-        self.stats_sidebar_panel.setLayout(stats_sidebar_layout)
+        self.browser_sidebar_panel = QtWidgets.QFrame()
+        self.browser_sidebar_panel.setObjectName("browserSidebarPanel")
+        self.browser_sidebar_panel.setMinimumWidth(280)
+        self.browser_sidebar_panel.setStyleSheet("QFrame#browserSidebarPanel { background: palette(window); border-left: 1px solid palette(mid); }")
+        browser_sidebar_layout = QtWidgets.QVBoxLayout()
+        browser_sidebar_layout.setContentsMargins(16, 16, 16, 16)
+        browser_sidebar_layout.addWidget(self.file_browser_panel, 1)
+        self.browser_sidebar_panel.setLayout(browser_sidebar_layout)
+
+        self.workspace_splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
+        self.workspace_splitter.setChildrenCollapsible(False)
+        self.workspace_splitter.setHandleWidth(5)
+        self.workspace_splitter.setStyleSheet("""
+            QSplitter::handle {
+                background: palette(mid);
+            }
+            QSplitter::handle:hover {
+                background: palette(highlight);
+            }
+        """)
+        self.workspace_splitter.addWidget(self.sidebar_panel)
+        self.workspace_splitter.addWidget(self.image_workspace)
+        self.workspace_splitter.addWidget(self.browser_sidebar_panel)
+        self.workspace_splitter.setStretchFactor(0, 0)
+        self.workspace_splitter.setStretchFactor(1, 1)
+        self.workspace_splitter.setStretchFactor(2, 0)
+        self.workspace_splitter.setSizes([390, 800, 320])
 
         workspace_layout = QtWidgets.QHBoxLayout()
         workspace_layout.setContentsMargins(0, 0, 0, 0)
         workspace_layout.setSpacing(0)
-        workspace_layout.addWidget(self.sidebar_panel)
-        workspace_layout.addWidget(self.image_workspace, 1)
-        workspace_layout.addWidget(self.stats_sidebar_panel)
+        workspace_layout.addWidget(self.workspace_splitter)
 
         self.mdiarea_plus_buttons = QtWidgets.QWidget()
         self.mdiarea_plus_buttons.setLayout(workspace_layout)
@@ -579,7 +614,7 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         self.set_window_close_pushbuttons_always_visible(self._mdiArea.activeSubWindow(), True)
         self.set_window_mouse_rect_visible(self._mdiArea.activeSubWindow(), True)
         self.sidebar_panel.setVisible(True)
-        self.stats_sidebar_panel.setVisible(True)
+        self.browser_sidebar_panel.setVisible(True)
 
         self.interface_toggle_pushbutton.setToolTip("Hide interface (studio mode)")
 
@@ -599,7 +634,7 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         self.set_window_close_pushbuttons_always_visible(self._mdiArea.activeSubWindow(), False)
         self.set_window_mouse_rect_visible(self._mdiArea.activeSubWindow(), False)
         self.sidebar_panel.setVisible(False)
-        self.stats_sidebar_panel.setVisible(False)
+        self.browser_sidebar_panel.setVisible(False)
 
         self.interface_toggle_pushbutton.setToolTip("Show interface (H)")
 
@@ -876,7 +911,7 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
 
     # View loading methods
 
-    def loadFile(self, filename_main_topleft, filename_topright=None, filename_bottomleft=None, filename_bottomright=None):
+    def loadFile(self, filename_main_topleft, filename_topright=None, filename_bottomleft=None, filename_bottomright=None, show_differences=False):
         """Load an individual image or sliding overlay into new subwindow.
 
         Args:
@@ -884,6 +919,7 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
             filename_topright (str): The image filepath for top-right of the sliding overlay (set None to exclude)
             filename_bottomleft (str): The image filepath for bottom-left of the sliding overlay (set None to exclude)
             filename_bottomright (str): The image filepath for bottom-right of the sliding overlay (set None to exclude)
+            show_differences (bool): True to render non-base overlay images as differences against the base image.
         """
         
         self.display_loading_grayout(True, "Loading viewer with main image '" + filename_main_topleft.split("/")[-1] + "'...")
@@ -897,6 +933,7 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
             filename_topright,
             filename_bottomleft,
             filename_bottomright,
+            show_differences=show_differences,
         )
         
         QtWidgets.QApplication.restoreOverrideCursor()
@@ -945,6 +982,7 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         self.updateRecentFileActions()
         
         self._last_accessed_fullpath = filename_main_topleft
+        self.sync_file_browser_to_path(filename_main_topleft)
 
         self.display_loading_grayout(False)
         
@@ -959,6 +997,31 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
     def load_from_dragged_and_dropped_file(self, filename_main_topleft):
         """Load an individual image (convenience function — e.g., from a single emitted single filename)."""
         self.loadFile(filename_main_topleft)
+
+    def sync_file_browser_to_path(self, filepath):
+        """Keep the file browser aligned with the most recently opened image."""
+        if filepath:
+            self.file_browser_panel.focus_path(filepath)
+
+    def is_supported_browser_file(self, filepath):
+        """Return whether the file browser selection looks like an image file."""
+        if not filepath or not os.path.isfile(filepath):
+            return False
+
+        detected_format = QtGui.QImageReader.imageFormat(filepath)
+        if detected_format:
+            return True
+
+        _, extension = os.path.splitext(filepath)
+        return extension.lower() in {".svg", ".svgz"}
+
+    def open_file_from_browser(self, filepath):
+        """Open an image selected from the in-app file browser."""
+        if not self.is_supported_browser_file(filepath):
+            self.statusBar().showMessage("Select an image file to open it in the viewer.", 3000)
+            return
+
+        self.loadFile(filepath)
     
     def createMdiChild(self, pixmap, filename_main_topleft, pixmap_topright, pixmap_bottomleft, pixmap_bottomright, transform_mode_smooth):
         """Create new viewing widget for an individual image or sliding overlay to be placed in a new subwindow.
@@ -1030,7 +1093,13 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         file_path_bottomright = self._splitview_creator.drag_drop_area.app_bottomright.file_path
 
         # loadFile with those filenames
-        self.loadFile(file_path_main_topleft, file_path_topright, file_path_bottomleft, file_path_bottomright)
+        self.loadFile(
+            file_path_main_topleft,
+            file_path_topright,
+            file_path_bottomleft,
+            file_path_bottomright,
+            show_differences=self._splitview_creator.show_differences_in_overlay,
+        )
 
     def fit_to_window(self):
         """Fit the view of the active subwindow (if it exists)."""
@@ -1429,7 +1498,7 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         return build_stats_entries(build_image_slots_for_view(child))
 
     def update_image_stats_panel(self, window=None):
-        """Refresh the right sidebar with metadata for all images in the active window."""
+        """Refresh the sidebar stats with metadata for all images in the active window."""
         child = self.activeMdiChild
         if child is None:
             self.image_stats_panel.reset()
