@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="MosaicView logo">
+  <rect x="72" y="72" width="880" height="880" rx="210" fill="#f8fafc"/>
+  <rect x="104" y="104" width="816" height="816" rx="180" fill="none" stroke="#172033" stroke-width="44"/>
+  <path d="M218 238h274v246H218z" fill="#17b8a6"/>
+  <path d="M532 238h274v246H532z" fill="#ffbf45"/>
+  <path d="M218 524h274v262H218z" fill="#f45d6c"/>
+  <path d="M532 524h274v262H532z" fill="#6c63ff"/>
+  <path d="M512 214v596M194 504h636" stroke="#172033" stroke-width="40" stroke-linecap="round"/>
+  <rect x="406" y="398" width="212" height="212" rx="46" fill="#f8fafc" stroke="#172033" stroke-width="36"/>
+  <path d="M456 506h112M512 450v112" stroke="#172033" stroke-width="32" stroke-linecap="round"/>
+</svg>

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""QLabel widgets for Butterfly Viewer.
+"""QLabel widgets for MosaicView.
 
 Not intended as a script.
 """

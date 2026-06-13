@@ -1,4 +1,4 @@
-"""Butterfly Viewer package."""
+"""MosaicView package."""
 
 from .app.bootstrap import main
 from .ui.main_window import APPNAME, VERSION, MultiViewMainWindow

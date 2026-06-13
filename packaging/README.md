@@ -1,11 +1,11 @@
-# Packaging Butterfly Viewer
+# Packaging MosaicView
 
 ## macOS `.app`
 
 Create a clean environment and install the project:
 
 ```bash
-cd /Users/halley/Project/butterfly_viewer
+cd /Users/halley/Project/MosaicView
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -U pip
@@ -16,19 +16,19 @@ python -m pip install pyinstaller
 Build the app bundle:
 
 ```bash
-python -m PyInstaller --noconfirm packaging/butterfly-viewer-macos.spec
+python -m PyInstaller --noconfirm packaging/mosaic-view-macos.spec
 ```
 
 The runnable app will be created at:
 
 ```text
-dist/Butterfly Viewer.app
+dist/MosaicView.app
 ```
 
 You can launch it from Finder, or from the terminal:
 
 ```bash
-open "dist/Butterfly Viewer.app"
+open "dist/MosaicView.app"
 ```
 
 ## Rebuild
@@ -37,7 +37,7 @@ If you need a clean rebuild:
 
 ```bash
 rm -rf build dist
-python -m PyInstaller --noconfirm packaging/butterfly-viewer-macos.spec
+python -m PyInstaller --noconfirm packaging/mosaic-view-macos.spec
 ```
 
 ## Notes

@@ -1,6 +1,6 @@
-# Butterfly Viewer
+# MosaicView
 
-`Butterfly Viewer` 是一个基于 `PyQt5` 的桌面图片对比工具，适合：
+`MosaicView` 是一个基于 `PyQt5` 的桌面图片对比工具，适合：
 
 - 多窗口并排查看图片
 - 同步缩放与同步平移
@@ -21,7 +21,7 @@
 推荐用虚拟环境或 `conda` 环境：
 
 ```bash
-cd /Users/halley/代码/butterfly_viewer
+cd /Users/halley/Project/MosaicView
 python -m venv .venv
 source .venv/bin/activate
 pip install -U pip
@@ -31,8 +31,8 @@ pip install -e .
 如果你使用 `conda`：
 
 ```bash
-conda create -y -n butterfly_viewer python=3.11 pip
-conda activate butterfly_viewer
+conda create -y -n mosaic_view python=3.11 pip
+conda activate mosaic_view
 pip install -e .
 ```
 
@@ -41,19 +41,19 @@ pip install -e .
 推荐：
 
 ```bash
-python -m butterfly_viewer
+python -m mosaic_view
 ```
 
 安装后也可以直接用命令行入口：
 
 ```bash
-butterfly-viewer
+mosaic-view
 ```
 
 保留兼容方式：
 
 ```bash
-python butterfly_viewer/butterfly_viewer.py
+python mosaic_view/mosaic_view.py
 ```
 
 ## 打包为 macOS App
@@ -61,32 +61,32 @@ python butterfly_viewer/butterfly_viewer.py
 当前项目已提供 PyInstaller 配置，可打包成可双击运行的 `.app`：
 
 ```bash
-cd /Users/halley/Project/butterfly_viewer
+cd /Users/halley/Project/MosaicView
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -U pip
 python -m pip install -e .
 python -m pip install pyinstaller
-python -m PyInstaller --noconfirm ./packaging/butterfly-viewer-macos.spec
+python -m PyInstaller --noconfirm ./packaging/mosaic-view-macos.spec
 ```
 
 生成结果：
 
 ```text
-dist/Butterfly Viewer.app
+dist/MosaicView.app
 ```
 
 启动打包后的 App：
 
 ```bash
-open "dist/Butterfly Viewer.app"
+open "dist/MosaicView.app"
 ```
 
 如果需要干净重打包：
 
 ```bash
 rm -rf build dist
-python -m PyInstaller --noconfirm packaging/butterfly-viewer-macos.spec
+python -m PyInstaller --noconfirm packaging/mosaic-view-macos.spec
 ```
 
 说明：
@@ -100,19 +100,19 @@ python -m PyInstaller --noconfirm packaging/butterfly-viewer-macos.spec
 直接启动程序：
 
 ```bash
-python -m butterfly_viewer
+python -m mosaic_view
 ```
 
 启动时直接加载多张独立图片：
 
 ```bash
-python -m butterfly_viewer --paths a.jpg b.jpg c.tif
+python -m mosaic_view --paths a.jpg b.jpg c.tif
 ```
 
 启动时直接创建叠加视图：
 
 ```bash
-python -m butterfly_viewer \
+python -m mosaic_view \
   --overlay_path_main_topleft base.tif \
   --overlay_path_topright ir.tif \
   --overlay_path_bottomleft xray.tif \
@@ -128,7 +128,7 @@ python -m butterfly_viewer \
 ## 启动参数
 
 ```bash
-python -m butterfly_viewer --help
+python -m mosaic_view --help
 ```
 
 当前主要参数：
@@ -159,14 +159,14 @@ python -m butterfly_viewer --help
 ## 项目结构
 
 ```text
-butterfly_viewer/
+MosaicView/
 ├── pyproject.toml
 ├── README.md
 ├── LICENSE.txt
-└── butterfly_viewer/
+└── mosaic_view/
     ├── __init__.py
     ├── __main__.py
-    ├── butterfly_viewer.py
+    ├── mosaic_view.py
     ├── app/
     │   └── bootstrap.py
     ├── domain/

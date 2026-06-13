@@ -1,4 +1,4 @@
-Butterfly Viewer
+MosaicView
 
 Created by Lars Maxfield
 
@@ -27,7 +27,7 @@ copyright (c) Siemens (https://github.com/siemens/ix-icons/), made available
 under the MIT License, and acquired from SVG Repo at 
 https://www.svgrepo.com/collection/industrial-sharp-ui-icons/.
 
-The Butterfly logo is by Marco Roling.
+The MosaicView logo is original project artwork.
 
 The graphical user interface uses PyQt5 (Riverbank Computing
 Limited), released under the GNU General Public License v3.

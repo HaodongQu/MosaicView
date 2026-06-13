@@ -12,8 +12,8 @@ a = Analysis(
     binaries=[],
     datas=[
         (
-            str(ROOT / "butterfly_viewer" / "icons"),
-            "butterfly_viewer/icons",
+            str(ROOT / "mosaic_view" / "icons"),
+            "mosaic_view/icons",
         ),
     ],
     hiddenimports=["PyQt5.sip"],
@@ -31,7 +31,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name="Butterfly Viewer",
+    name="MosaicView",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -42,7 +42,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=str(ROOT / "butterfly_viewer" / "icons" / "icon.icns"),
+    icon=str(ROOT / "mosaic_view" / "icons" / "icon.icns"),
 )
 coll = COLLECT(
     exe,
@@ -51,16 +51,16 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name="Butterfly Viewer",
+    name="MosaicView",
 )
 app = BUNDLE(
     coll,
-    name="Butterfly Viewer.app",
-    icon=str(ROOT / "butterfly_viewer" / "icons" / "icon.icns"),
-    bundle_identifier="com.olivegroves.butterflyviewer",
+    name="MosaicView.app",
+    icon=str(ROOT / "mosaic_view" / "icons" / "icon.icns"),
+    bundle_identifier="com.halley.mosaicview",
     info_plist={
-        "CFBundleName": "Butterfly Viewer",
-        "CFBundleDisplayName": "Butterfly Viewer",
+        "CFBundleName": "MosaicView",
+        "CFBundleDisplayName": "MosaicView",
         "CFBundleShortVersionString": "1.1.0",
         "CFBundleVersion": "1.1.0",
         "NSHighResolutionCapable": "True",

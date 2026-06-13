@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""Drag-and-drop interface widgets and their supporting subwidgets for Butterfly Viewer.
+"""Drag-and-drop interface widgets and their supporting subwidgets for MosaicView.
 
 Not intended as a script.
 

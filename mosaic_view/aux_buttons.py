@@ -2,7 +2,7 @@
 
 """Button widgets whose icons can be "truly" set to SVG image files.
 
-Not intended as a script. Used in Butterfly Viewer.
+Not intended as a script. Used in MosaicView.
 
 Credits:
     SvgButton, SvgToolButton, SvgAbstractButton: Copyright (c) 2022 Jung Gyu Yoon (https://github.com/yjg30737)
@@ -296,7 +296,7 @@ class SvgToolButton(QToolButton, SvgAbstractButton):
 
 
 class ViewerButton(SvgButton):
-    """SvgButton with styles for Butterfly Viewer main interface."""
+    """SvgButton with styles for MosaicView main interface."""
     def __init__(self, base_widget: QWidget = None, style: str="default", *args, **kwargs):
         super().__init__(base_widget, *args, **kwargs)
         self.setStyle(style)

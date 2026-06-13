@@ -2,7 +2,7 @@
 
 """QDialog widgets for SplitView.
 
-Not intended as a script. Used in Butterfly Viewer.
+Not intended as a script. Used in MosaicView.
 
 Creates a dialog window for users to calculate the pixel-unit conversion for rulers in SplitView.
 """

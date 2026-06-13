@@ -3,7 +3,7 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "butterfly-viewer"
+name = "mosaic-view"
 version = "1.1.0"
 description = "PyQt5 desktop image comparison tool with synchronized views and sliding overlays."
 readme = "README.md"
@@ -18,19 +18,19 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/olive-groves/butterfly_viewer"
+Homepage = "https://github.com/halley/MosaicView"
 
 [project.scripts]
-butterfly-viewer = "butterfly_viewer.app.bootstrap:main"
+mosaic-view = "mosaic_view.app.bootstrap:main"
 
 [tool.setuptools]
 include-package-data = true
 
 [tool.setuptools.packages.find]
-include = ["butterfly_viewer*"]
+include = ["mosaic_view*"]
 
 [tool.setuptools.package-data]
-butterfly_viewer = [
+mosaic_view = [
   "icons.qrc",
   "icons/*",
 ]

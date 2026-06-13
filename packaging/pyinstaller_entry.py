@@ -1,6 +1,6 @@
-"""PyInstaller entry point for Butterfly Viewer."""
+"""PyInstaller entry point for MosaicView."""
 
-from butterfly_viewer.app.bootstrap import main
+from mosaic_view.app.bootstrap import main
 
 
 if __name__ == "__main__":

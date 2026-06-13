@@ -12,10 +12,10 @@ except ImportError:
 
 
 def create_argument_parser():
-    """Create the Butterfly Viewer CLI parser."""
+    """Create the MosaicView CLI parser."""
     parser = argparse.ArgumentParser(
-        prog="Butterfly Viewer",
-        description="Side-by-side image viewer with synchronized zoom and sliding overlays. Further info: https://olive-groves.github.io/butterfly_viewer/",
+        prog="MosaicView",
+        description="Side-by-side image viewer with synchronized zoom and sliding overlays. Further info: https://halley.github.io/MosaicView/",
     )
     parser.add_argument("--hide", help="If provided, hides the interface on start.", action="store_true")
     parser.add_argument("--fullscreen", help="If provided, fullscreens the app on start.", action="store_true")
@@ -73,7 +73,7 @@ def configure_main_window(main_window, args):
 
 
 def main(argv=None):
-    """Run the Butterfly Viewer application."""
+    """Run the MosaicView application."""
     app, args = create_application(argv)
     main_window = MultiViewMainWindow()
     main_window.setWindowTitle(APPNAME)

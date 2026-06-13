@@ -288,7 +288,7 @@ class SplitView(QtWidgets.QFrame):
         tracker_deadzone_right = EventTrackerSplitBypassDeadzone(self.resize_deadzone_right)
         tracker_deadzone_right.mouse_position_changed_global.connect(self.update_split_given_global)
 
-        # A frame is placed over the border of the widget to highlight it as the active subwindow in Butterfly Viewer.
+        # A frame is placed over the border of the widget to highlight it as the active subwindow in MosaicView.
         self.frame_hud = QtWidgets.QFrame()
         self.frame_hud.setStyleSheet("border: 0px solid transparent")
         self.frame_hud.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents)
@@ -1009,7 +1009,7 @@ class SplitView(QtWidgets.QFrame):
             self.display_loading_grayout(False, pseudo_load_time=0)
             return
         
-        header = [["Butterfly Viewer"],
+        header = [["MosaicView"],
                   ["1.0"],
                   ["comments"],
                   ["no details"],

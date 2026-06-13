@@ -2,7 +2,7 @@
 
 """Ruler items for CustomQGraphicsScene.
 
-Not intended as a script. Used in Butterfly Viewer.
+Not intended as a script. Used in MosaicView.
 
 RulerItem creates a movable ruler on QGraphicsScene with specified units of length.
 """

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""Functions which use image EXIF for Butterfly Viewer.
+"""Functions which use image EXIF for MosaicView.
 
 Not intended as a script.
 """

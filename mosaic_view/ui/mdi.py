@@ -4,7 +4,7 @@
 
 Not intended as a script.
 
-Creates the multi document interface (MDI) widget for the Butterfly Viewer.
+Creates the multi document interface (MDI) widget for the MosaicView.
 """
 # SPDX-License-Identifier: GPL-3.0-or-later
 

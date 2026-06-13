@@ -2,7 +2,7 @@
 
 """Trackers and signalers for SplitView.
 
-Not intended as a script. Used in Butterfly Viewer.
+Not intended as a script. Used in MosaicView.
 
 Creates widgets to track and signal events in SplitView, primarily for mouse movement.
 """

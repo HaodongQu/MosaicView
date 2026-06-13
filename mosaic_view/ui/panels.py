@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""User interface widgets and their supporting subwidgets for Butterfly Viewer.
+"""User interface widgets and their supporting subwidgets for MosaicView.
 
 Not intended as a script.
 
@@ -86,7 +86,7 @@ class SplitViewCreator(QtWidgets.QFrame):
     
     Users can add local image files via drag-and-drop and "Select image..." dialogs.
 
-    Instantiate without input. See Butterfly Viewer for implementation.
+    Instantiate without input. See MosaicView for implementation.
     """
     
     clicked_create_splitview_pushbutton = QtCore.pyqtSignal()

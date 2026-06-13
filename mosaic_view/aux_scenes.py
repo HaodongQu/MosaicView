@@ -4,7 +4,7 @@
 
 Not intended as a script.
 
-Creates the base scene of the SplitView for Butterfly Viewer.
+Creates the base scene of the SplitView for MosaicView.
 """
 # SPDX-License-Identifier: GPL-3.0-or-later
 

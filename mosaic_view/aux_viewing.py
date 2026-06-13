@@ -4,7 +4,7 @@
 
 Not intended as a script.
 
-Creates the base view of the SplitView for Butterfly Viewer.
+Creates the base view of the SplitView for MosaicView.
 
 Credits:
     PyQt MDI Image Viewer by tpgit (http://tpgit.github.io/MDIImageViewer/) for sync pan and zoom.

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""Functions without a specific category for Butterfly Viewer.
+"""Functions without a specific category for MosaicView.
 
 Not intended as a script.
 

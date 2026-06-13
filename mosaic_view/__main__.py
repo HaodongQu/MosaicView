@@ -1,4 +1,4 @@
-"""Module entry point for `python -m butterfly_viewer`."""
+"""Module entry point for `python -m mosaic_view`."""
 
 from .app.bootstrap import main
 

@@ -2,7 +2,7 @@
 
 """Comment items for CustomQGraphicsScene.
 
-Not intended as a script. Used in Butterfly Viewer.
+Not intended as a script. Used in MosaicView.
 
 Creates an editable and movable comment on QGraphicsScene at a given scene position.
 """

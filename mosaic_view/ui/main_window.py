@@ -3,7 +3,7 @@
 """Multi-image viewer for comparing images with synchronized zooming, panning, and sliding overlays.
 
 Intended to be run as a script:
-    $ python butterfly_viewer.py
+    $ python mosaic_view.py
 
 Features:
     Image windows have synchronized zoom and pan by default, but can be optionally unsynced.
@@ -63,9 +63,9 @@ if hasattr(sip, "setapi"):
     sip.setapi('QVariant', 2)
     sip.setapi('QString', 2)
 
-COMPANY = "Butterfly Apps"
-DOMAIN = "https://github.com/olive-groves/butterfly_viewer/"
-APPNAME = "Butterfly Viewer"
+COMPANY = "MosaicView"
+DOMAIN = "https://github.com/halley/MosaicView/"
+APPNAME = "MosaicView"
 VERSION = "1.1"
 
 SETTING_RECENTFILELIST = "recentfilelist"
@@ -78,7 +78,7 @@ SETTING_SYNCHPAN = "synchpan"
 
 
 class SplitViewMdiChild(SplitView):
-    """Extends SplitView for use in Butterfly Viewer.
+    """Extends SplitView for use in MosaicView.
 
     Args:
         See parent method for full documentation.
@@ -116,7 +116,7 @@ class SplitViewMdiChild(SplitView):
 class MultiViewMainWindow(QtWidgets.QMainWindow):
     """View multiple images with split-effect and synchronized panning and zooming.
 
-    Extends QMainWindow as main window of Butterfly Viewer with user interface:
+    Extends QMainWindow as main window of MosaicView with user interface:
 
     - Create sliding overlays.
     - Change viewer settings.
@@ -373,7 +373,7 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         sidebar_header_layout = QtWidgets.QVBoxLayout()
         sidebar_header_layout.setContentsMargins(14, 14, 14, 14)
         sidebar_header_layout.setSpacing(10)
-        sidebar_title = QtWidgets.QLabel("Butterfly Viewer")
+        sidebar_title = QtWidgets.QLabel("MosaicView")
         sidebar_title.setStyleSheet("QLabel { font-size: 14pt; font-weight: bold; }")
         sidebar_header_layout.addWidget(sidebar_title)
         sidebar_header_layout.addWidget(self._label_mouse)
@@ -900,13 +900,13 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
     def show_about(self):
         """Show about box."""
         sp = "<br>"
-        title = "Butterfly Viewer"
-        text = "Butterfly Viewer"
+        title = "MosaicView"
+        text = "MosaicView"
         text = text + sp + "Lars Maxfield"
         text = text + sp + "Version: " + VERSION
         text = text + sp + "License: <a href='https://www.gnu.org/licenses/gpl-3.0.en.html'>GNU GPL v3</a> or later"
-        text = text + sp + "Source: <a href='https://github.com/olive-groves/butterfly_viewer'>github.com/olive-groves/butterfly_viewer</a>"
-        text = text + sp + "Tutorial: <a href='https://olive-groves.github.io/butterfly_viewer'>olive-groves.github.io/butterfly_viewer</a>"
+        text = text + sp + "Source: <a href='https://github.com/halley/MosaicView'>github.com/halley/MosaicView</a>"
+        text = text + sp + "Tutorial: <a href='https://halley.github.io/MosaicView'>halley.github.io/MosaicView</a>"
         box = QtWidgets.QMessageBox.about(self, title, text)
 
     # View loading methods
