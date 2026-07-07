@@ -445,10 +445,6 @@ class FileBrowserPanel(QtWidgets.QFrame):
         self.title_label = QtWidgets.QLabel("File Browser")
         self.title_label.setStyleSheet("QLabel { font-size: 10pt; font-weight: bold; }")
 
-        self.subtitle_label = QtWidgets.QLabel("Double-click a folder to enter it. Double-click an image to open it. Drag one or more images into the sliding overlay creator.")
-        self.subtitle_label.setWordWrap(True)
-        self.subtitle_label.setStyleSheet("QLabel { color: palette(mid); font-size: 8.5pt; }")
-
         self.path_label = QtWidgets.QLabel()
         self.path_label.setWordWrap(True)
         self.path_label.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
@@ -493,9 +489,8 @@ class FileBrowserPanel(QtWidgets.QFrame):
 
         layout = QtWidgets.QVBoxLayout()
         layout.setContentsMargins(12, 12, 12, 12)
-        layout.setSpacing(12)
+        layout.setSpacing(10)
         layout.addWidget(self.title_label)
-        layout.addWidget(self.subtitle_label)
         layout.addWidget(self.path_label)
         layout.addLayout(button_layout)
         layout.addWidget(self.tree_view, 1)

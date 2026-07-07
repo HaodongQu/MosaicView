@@ -144,10 +144,15 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         self.f_shortcut.activated.connect(self.toggle_fullscreen)
 
         self.h_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("h"), self)
+        self.h_shortcut.setContext(QtCore.Qt.ApplicationShortcut)
         self.h_shortcut.activated.connect(self.toggle_interface)
 
         self.ctrl_c_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+c"), self)
         self.ctrl_c_shortcut.activated.connect(self.copy_view)
+
+        app = QtWidgets.QApplication.instance()
+        if app is not None:
+            app.installEventFilter(self)
 
         self._mdiArea.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
         self._mdiArea.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
@@ -157,8 +162,9 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
 
         self._label_mouse = QtWidgets.QLabel() # Pixel coordinates of mouse in a view
         self._label_mouse.setText("View pixel coordinates: ( N/A , N/A )")
+        self._label_mouse.setWordWrap(True)
         self._label_mouse.adjustSize()
-        self._label_mouse.setVisible(True)
+        self._label_mouse.setVisible(False)
         self._label_mouse.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
         self._label_mouse.setStyleSheet("QLabel { color: palette(text); background-color: rgba(255, 255, 255, 0.06); border: 1px solid palette(mid); padding: 0.5em 0.7em; font-size: 8pt; border-radius: 0.45em; }")
 
@@ -304,6 +310,7 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         layout_mdiarea_bottomright_vertical.setContentsMargins(0, 0, 0, 0)
         layout_mdiarea_bottomright_vertical.setHorizontalSpacing(8)
         layout_mdiarea_bottomright_vertical.setVerticalSpacing(8)
+        layout_mdiarea_bottomright_vertical.setAlignment(QtCore.Qt.AlignLeft)
         layout_mdiarea_bottomright_vertical.addWidget(self.fit_to_window_pushbutton, 0, 0)
         layout_mdiarea_bottomright_vertical.addWidget(self.tile_default_pushbutton, 0, 1)
         layout_mdiarea_bottomright_vertical.addWidget(self.tile_horizontally_pushbutton, 0, 2)
@@ -317,6 +324,7 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         layout_mdiarea_bottomright_horizontal.setContentsMargins(0, 0, 0, 0)
         layout_mdiarea_bottomright_horizontal.setHorizontalSpacing(8)
         layout_mdiarea_bottomright_horizontal.setVerticalSpacing(8)
+        layout_mdiarea_bottomright_horizontal.setAlignment(QtCore.Qt.AlignLeft)
         layout_mdiarea_bottomright_horizontal.addWidget(self.open_new_pushbutton, 0, 0)
         layout_mdiarea_bottomright_horizontal.addWidget(self.save_view_pushbutton, 0, 1)
         layout_mdiarea_bottomright_horizontal.addWidget(self.stopsync_toggle_pushbutton, 0, 2)
@@ -376,7 +384,6 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         sidebar_title = QtWidgets.QLabel("MosaicView")
         sidebar_title.setStyleSheet("QLabel { font-size: 14pt; font-weight: bold; }")
         sidebar_header_layout.addWidget(sidebar_title)
-        sidebar_header_layout.addWidget(self._label_mouse)
         sidebar_header.setLayout(sidebar_header_layout)
 
         sidebar_section_tools = QtWidgets.QFrame()
@@ -398,11 +405,12 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         sidebar_section_tools.setLayout(sidebar_section_tools_layout)
 
         self.sidebar_content = QtWidgets.QWidget()
+        self.sidebar_content.setMinimumWidth(0)
+        self.sidebar_content.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Preferred)
         sidebar_layout = QtWidgets.QVBoxLayout()
-        sidebar_layout.setContentsMargins(16, 16, 16, 16)
+        sidebar_layout.setContentsMargins(16, 16, 20, 16)
         sidebar_layout.setSpacing(16)
         sidebar_layout.addWidget(sidebar_header)
-        sidebar_layout.addWidget(self.interface_mdiarea_topleft)
         sidebar_layout.addWidget(sidebar_section_tools)
         self.image_stats_panel = ImageStatsPanel()
         sidebar_layout.addWidget(self.image_stats_panel)
@@ -413,6 +421,7 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         self.sidebar_scroll.setWidgetResizable(True)
         self.sidebar_scroll.setFrameShape(QtWidgets.QFrame.NoFrame)
         self.sidebar_scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.sidebar_scroll.setViewportMargins(0, 0, 2, 0)
         self.sidebar_scroll.setWidget(self.sidebar_content)
 
         self.sidebar_panel = QtWidgets.QFrame()
@@ -429,10 +438,12 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
 
         self.browser_sidebar_panel = QtWidgets.QFrame()
         self.browser_sidebar_panel.setObjectName("browserSidebarPanel")
-        self.browser_sidebar_panel.setMinimumWidth(280)
+        self.browser_sidebar_panel.setMinimumWidth(360)
         self.browser_sidebar_panel.setStyleSheet("QFrame#browserSidebarPanel { background: palette(window); border-left: 1px solid palette(mid); }")
         browser_sidebar_layout = QtWidgets.QVBoxLayout()
         browser_sidebar_layout.setContentsMargins(16, 16, 16, 16)
+        browser_sidebar_layout.setSpacing(16)
+        browser_sidebar_layout.addWidget(self.interface_mdiarea_topleft)
         browser_sidebar_layout.addWidget(self.file_browser_panel, 1)
         self.browser_sidebar_panel.setLayout(browser_sidebar_layout)
 
@@ -453,7 +464,7 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         self.workspace_splitter.setStretchFactor(0, 0)
         self.workspace_splitter.setStretchFactor(1, 1)
         self.workspace_splitter.setStretchFactor(2, 0)
-        self.workspace_splitter.setSizes([390, 800, 320])
+        self.workspace_splitter.setSizes([340, 800, 390])
 
         workspace_layout = QtWidgets.QHBoxLayout()
         workspace_layout.setContentsMargins(0, 0, 0, 0)
@@ -649,6 +660,26 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         else:
             self.show_interface_on()
 
+    def eventFilter(self, source, event):
+        """Handle app-wide shortcuts that must work while image views own focus."""
+        if event.type() == QtCore.QEvent.KeyPress and event.key() == QtCore.Qt.Key_H:
+            if event.modifiers() in (QtCore.Qt.NoModifier, QtCore.Qt.ShiftModifier):
+                focus_widget = QtWidgets.QApplication.focusWidget()
+                text_input_types = (
+                    QtWidgets.QLineEdit,
+                    QtWidgets.QTextEdit,
+                    QtWidgets.QPlainTextEdit,
+                    QtWidgets.QSpinBox,
+                    QtWidgets.QDoubleSpinBox,
+                    QtWidgets.QComboBox,
+                )
+                if not isinstance(focus_widget, text_input_types):
+                    self.toggle_interface()
+                    event.accept()
+                    return True
+
+        return super().eventFilter(source, event)
+
     def set_stopsync_pushbutton(self, boolean):
         """Set state of synchronous zoom/pan and appearance of corresponding interface button.
 
@@ -776,30 +807,20 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
     def update_window_labels(self, window):
         """Update labels of subwindows in MDIArea.
 
-        Input window should be the subwindow which is active.
-        All other subwindow(s) will be shown no labels.
+        All subwindows keep image filename labels visible when labels have text.
+        Interface visibility only affects sidebars and controls, not image labels.
         
         Args:
-            window (QMdiSubWindow): The active subwindow to show label(s) of image(s) and indicate as active.
+            window (QMdiSubWindow): Unused signal argument from active subwindow changes.
         """
-        if window is None:
-            return
-        changed_window = window
         label_visible = True
-        if self.is_quiet_mode:
-            label_visible = False
-        changed_window.widget().label_main_topleft.set_visible_based_on_text(label_visible)
-        changed_window.widget().label_topright.set_visible_based_on_text(label_visible)
-        changed_window.widget().label_bottomright.set_visible_based_on_text(label_visible)
-        changed_window.widget().label_bottomleft.set_visible_based_on_text(label_visible)
 
         windows = self._mdiArea.subWindowList()
         for window in windows:
-            if window != changed_window:
-                window.widget().label_main_topleft.set_visible_based_on_text(False)
-                window.widget().label_topright.set_visible_based_on_text(False)
-                window.widget().label_bottomright.set_visible_based_on_text(False)
-                window.widget().label_bottomleft.set_visible_based_on_text(False)
+            window.widget().label_main_topleft.set_visible_based_on_text(label_visible)
+            window.widget().label_topright.set_visible_based_on_text(label_visible)
+            window.widget().label_bottomright.set_visible_based_on_text(label_visible)
+            window.widget().label_bottomleft.set_visible_based_on_text(label_visible)
 
     def set_window_close_pushbuttons_always_visible(self, window, boolean):
         """Enable/disable the always-on visiblilty of the close X on each subwindow.
@@ -1137,8 +1158,6 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
             active_view = self.activeMdiChild._view_main_topleft
             point_of_mouse_on_scene = active_view.mapToScene(point_of_mouse_on_viewport.x(), point_of_mouse_on_viewport.y())
 
-            if not self._label_mouse.isVisible():
-                self._label_mouse.show()
             self._label_mouse.setText("View pixel coordinates: ( x = %d , y = %d )" % (point_of_mouse_on_scene.x(), point_of_mouse_on_scene.y()))
             self.update_image_stats_mouse_position(point_of_mouse_on_scene.x(), point_of_mouse_on_scene.y())
             

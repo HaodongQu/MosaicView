@@ -56,7 +56,7 @@ class ImageLabel(QtWidgets.QLabel):
         self.set_pixmap_to_label_size()
         self.set_stylesheet_occupied(self.IS_OCCUPIED)
         self.became_occupied.emit(True)
-        
+
     def set_pixmap_to_label_size(self):
         """Resize and set pixmap to the label's size, thus maintaining the label's size and shape."""
         w = max(1, self.width_contents())

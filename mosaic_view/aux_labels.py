@@ -37,7 +37,7 @@ class FilenameLabel(QtWidgets.QLabel):
         self.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents)
         self.setBackgroundRole(QtGui.QPalette.ToolTipBase)
         if belongs_to_split:
-            self.setStyleSheet("QLabel {color: white; background-color: rgba(0, 0, 0, 191); border: 0px solid black; margin: 0.3em; font-size: 7.5pt; border-radius: 0px; }")
+            self.setStyleSheet("QLabel {color: white; background-color: rgba(0, 0, 0, 191); border: 0px solid black; margin: 0.35em; padding: 0.15em 0.3em; font-size: 9.5pt; border-radius: 0px; }")
         else:
             self.setStyleSheet("QLabel {color: white; background-color: rgba(0, 0, 0, 191); border: 0px solid black; margin: 0.2em; font-size: 7.5pt; border-radius: 0px; }")
         self.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Preferred)
