@@ -46,7 +46,7 @@ class FilenameLabel(QtWidgets.QLabel):
         """str: Override setText to remove path in filename and set visibilty as specified."""
         if text is not None:
             if self.remove_path:
-                text = text.split("/")[-1]
+                text = "\n".join(line.replace("\\", "/").split("/")[-1] for line in text.splitlines())
         
         super().setText(text)
 

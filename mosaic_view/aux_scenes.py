@@ -75,6 +75,7 @@ class CustomQGraphicsScene(QtWidgets.QGraphicsScene):
     right_click_all_transform_mode_smooth = QtCore.pyqtSignal(bool)
     right_click_background_color = QtCore.pyqtSignal(list)
     right_click_sync_zoom_by = QtCore.pyqtSignal(str)
+    right_click_custom_title = QtCore.pyqtSignal()
     position_changed_qgraphicsitem = QtCore.pyqtSignal()
     
     def contextMenuEvent(self, event):
@@ -137,6 +138,11 @@ class CustomQGraphicsScene(QtWidgets.QGraphicsScene):
             if action_delete:
                 menu.addAction(action_delete) # action_delete.triggered.connect(lambda: self.removeItem(item.parentItem())) # = menu.addAction("Delete", self.removeItem(item.parentItem()))
         else:
+            action_custom_title = menu.addAction("Set custom title...")
+            action_custom_title.triggered.connect(lambda: self.right_click_custom_title.emit())
+
+            menu.addSeparator()
+
             action_comment = menu.addAction("Comment")
             action_comment.setToolTip("Add a draggable text comment here")
             action_comment.triggered.connect(lambda: self.right_click_comment.emit(scene_pos)) # action_comment.triggered.connect(lambda state, x=scene_pos: self.right_click_comment.emit(x))

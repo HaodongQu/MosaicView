@@ -10,6 +10,8 @@ Creates the multi document interface (MDI) widget for the MosaicView.
 
 
 
+import math
+
 from PyQt5 import QtWidgets, QtCore
 
 
@@ -37,8 +39,54 @@ class QMdiAreaWithCustomSignals(QtWidgets.QMdiArea):
         self.last_tile_method = None
         self.are_there_any_subwindows_open = False
         self.most_recently_activated_subwindow = None
+        self._subwindow_order = []
 
         self.tile_subwindows_horizontally()
+
+    def addSubWindow(self, widget, windowFlags=QtCore.Qt.WindowFlags()):
+        """Add a subwindow and track its tile order."""
+        window = super().addSubWindow(widget, windowFlags)
+        self._register_subwindow(window)
+        return window
+
+    def _register_subwindow(self, window):
+        """Track a subwindow in the explicit tile order."""
+        if window not in self._subwindow_order:
+            self._subwindow_order.append(window)
+            window.destroyed.connect(self._sync_subwindow_order_later)
+
+    def _sync_subwindow_order_later(self, *_args):
+        """Clean closed subwindows from the explicit tile order after Qt updates."""
+        QtCore.QTimer.singleShot(0, self._sync_subwindow_order)
+
+    def _sync_subwindow_order(self):
+        """Keep the explicit tile order aligned with the live MDI subwindows."""
+        live_windows = self.subWindowList()
+        self._subwindow_order = [window for window in self._subwindow_order if window in live_windows]
+        return live_windows
+
+    def ordered_subwindows(self):
+        """Return live subwindows in the user-controlled tile order."""
+        live_windows = self._sync_subwindow_order()
+        for window in live_windows:
+            self._register_subwindow(window)
+        return list(self._subwindow_order)
+
+    def swap_subwindow_order(self, source_window, target_window):
+        """Swap two subwindows in the user-controlled tile order."""
+        windows = self.ordered_subwindows()
+        if source_window not in windows or target_window not in windows or source_window == target_window:
+            return False
+
+        source_index = self._subwindow_order.index(source_window)
+        target_index = self._subwindow_order.index(target_window)
+        self._subwindow_order[source_index], self._subwindow_order[target_index] = (
+            self._subwindow_order[target_index],
+            self._subwindow_order[source_index],
+        )
+        self.tile_what_was_done_last_time()
+        self.setActiveSubWindow(source_window)
+        return True
 
     def tile_subwindows_vertically(self, button_input=None):
         """Arrange subwindows vertically as a single column.
@@ -48,7 +96,7 @@ class QMdiAreaWithCustomSignals(QtWidgets.QMdiArea):
         Args:
             button_input: Optional placeholder for signal compatibility.
         """
-        windows = self.subWindowList()
+        windows = self.ordered_subwindows()
         if not windows:
             self.last_tile_method = "vertically"
             return
@@ -69,7 +117,7 @@ class QMdiAreaWithCustomSignals(QtWidgets.QMdiArea):
         Args:
             button_input: Optional placeholder for signal compatibility.
         """
-        windows = self.subWindowList()
+        windows = self.ordered_subwindows()
         if not windows:
             self.last_tile_method = "horizontally"
             return
@@ -88,7 +136,26 @@ class QMdiAreaWithCustomSignals(QtWidgets.QMdiArea):
         Args:
             button_input: Optional placeholder for signal compatibility.
         """
-        super().tileSubWindows()
+        windows = self.ordered_subwindows()
+        if not windows:
+            self.last_tile_method = "grid"
+            return
+
+        columns = math.ceil(math.sqrt(len(windows)))
+        rows = math.ceil(len(windows) / columns)
+        tile_width = self.width() // columns
+        tile_height = self.height() // rows
+
+        for index, window in enumerate(windows):
+            row = index // columns
+            column = index % columns
+            rect = QtCore.QRect(column * tile_width, row * tile_height, tile_width, tile_height)
+            if column == columns - 1:
+                rect.setWidth(self.width() - rect.x())
+            if row == rows - 1:
+                rect.setHeight(self.height() - rect.y())
+            window.setGeometry(rect)
+
         self.last_tile_method = "grid"
 
     def tile_what_was_done_last_time(self):

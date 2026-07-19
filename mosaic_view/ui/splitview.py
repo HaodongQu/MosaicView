@@ -78,6 +78,7 @@ class SplitView(QtWidgets.QFrame):
 
         self.currentFile = filename_main_topleft
         self.set_image_paths(filename_main_topleft, None, None, None)
+        self.custom_title = ""
 
         self.setWindowFlags(QtCore.Qt.FramelessWindowHint) # Clean appearance
         self.setFrameStyle(QtWidgets.QFrame.NoFrame)
@@ -136,6 +137,7 @@ class SplitView(QtWidgets.QFrame):
         self._scene_main_topleft.right_click_background_color.connect(self.set_scene_background_color)
         self._scene_main_topleft.right_click_background_color.connect(self.was_set_scene_background_color)
         self._scene_main_topleft.right_click_sync_zoom_by.connect(self.was_set_sync_zoom_by)
+        self._scene_main_topleft.right_click_custom_title.connect(self.on_right_click_custom_title)
 
         self._pixmapItem_main_topleft = QtWidgets.QGraphicsPixmapItem()
         self._scene_main_topleft.addItem(self._pixmapItem_main_topleft)
@@ -487,6 +489,42 @@ class SplitView(QtWidgets.QFrame):
         self.filename_topright = self.normalize_image_path(filename_topright)
         self.filename_bottomleft = self.normalize_image_path(filename_bottomleft)
         self.filename_bottomright = self.normalize_image_path(filename_bottomright)
+        if hasattr(self, "label_main_topleft"):
+            self.refresh_main_label()
+
+    def main_label_text(self):
+        """Return the display text for the main image label."""
+        filename = self.filename_main_topleft or self.currentFile
+        if filename:
+            filename = strippedName(filename)
+        title = self.custom_title.strip()
+        if title and filename:
+            return f"{title}\n{filename}"
+        if title:
+            return title
+        return filename
+
+    def refresh_main_label(self):
+        """Refresh the main image label using custom title and filename."""
+        remove_path = self.label_main_topleft.remove_path
+        self.label_main_topleft.remove_path = False
+        self.label_main_topleft.setText(self.main_label_text())
+        self.label_main_topleft.remove_path = remove_path
+
+    def on_right_click_custom_title(self):
+        """Prompt for a custom title for this view."""
+        title, ok = QtWidgets.QInputDialog.getText(
+            self,
+            "Set custom title",
+            "Custom title:",
+            QtWidgets.QLineEdit.Normal,
+            self.custom_title,
+        )
+        if not ok:
+            return
+
+        self.custom_title = title.strip()
+        self.refresh_main_label()
     
     def set_close_pushbutton_always_visible(self, boolean):
         """Enable/disable the always-on visiblilty of the close X of the view.

@@ -29,23 +29,19 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 
 try:
     from .splitview import SplitView
-    from .panels import SplitViewCreator, ImageStatsPanel, FileBrowserPanel
+    from .panels import SplitViewCreator, FileBrowserPanel
     from .mdi import QMdiAreaWithCustomSignals
     from ..aux_functions import strippedName, toBool, determineSyncSenderDimension, determineSyncAdjustmentFactor
     from ..aux_buttons import ViewerButton
     from ..services.image_loader import load_view_pixmaps
-    from ..services.metadata import build_stats_entries
-    from ..services.overlay import build_image_slots_for_view
     from .. import icons_rc
 except ImportError:
     from ui.splitview import SplitView
-    from ui.panels import SplitViewCreator, ImageStatsPanel, FileBrowserPanel
+    from ui.panels import SplitViewCreator, FileBrowserPanel
     from ui.mdi import QMdiAreaWithCustomSignals
     from aux_functions import strippedName, toBool, determineSyncSenderDimension, determineSyncAdjustmentFactor
     from aux_buttons import ViewerButton
     from services.image_loader import load_view_pixmaps
-    from services.metadata import build_stats_entries
-    from services.overlay import build_image_slots_for_view
     import icons_rc
 
 
@@ -136,6 +132,9 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         self._mdiArea.file_path_dragged_and_dropped.connect(self.load_from_dragged_and_dropped_file)
         self._mdiArea.first_subwindow_was_opened.connect(self.on_first_subwindow_was_opened)
         self._mdiArea.last_remaining_subwindow_was_closed.connect(self.on_last_remaining_subwindow_was_closed)
+        self._reorder_drag_source_window = None
+        self._reorder_drag_start_global_pos = None
+        self._reorder_drag_active = False
 
         self.escape_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Escape"), self)
         self.escape_shortcut.activated.connect(self.set_fullscreen_off)
@@ -149,6 +148,10 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
 
         self.ctrl_c_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+c"), self)
         self.ctrl_c_shortcut.activated.connect(self.copy_view)
+
+        self.ctrl_s_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Ctrl+s"), self)
+        self.ctrl_s_shortcut.setContext(QtCore.Qt.ApplicationShortcut)
+        self.ctrl_s_shortcut.activated.connect(self.save_view)
 
         app = QtWidgets.QApplication.instance()
         if app is not None:
@@ -181,7 +184,7 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         self._mdiArea.subWindowActivated.connect(self.update_window_labels)
         self._mdiArea.subWindowActivated.connect(self.updateMenus)
         self._mdiArea.subWindowActivated.connect(self.auto_tile_subwindows_on_close)
-        self._mdiArea.subWindowActivated.connect(self.update_image_stats_panel)
+        self._mdiArea.subWindowActivated.connect(self.update_zoom_panel)
         
         
         self.centralwidget_during_fullscreen_pushbutton = QtWidgets.QToolButton() # Needed for users to return the image viewer to the main window if the window of the viewer is lost during fullscreen
@@ -279,7 +282,7 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
 
         self.save_view_pushbutton = ViewerButton()
         self.save_view_pushbutton.setIcon(":/icons/download.svg")
-        self.save_view_pushbutton.setToolTip("Save a screenshot of the viewer... | Copy screenshot to clipboard (Ctrl·C)")
+        self.save_view_pushbutton.setToolTip("Save a screenshot of the viewer... (Ctrl·S) | Copy screenshot to clipboard (Ctrl·C)")
         self.save_view_pushbutton.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
         self.save_view_pushbutton.setMouseTracking(True)
         self.save_view_pushbutton.clicked.connect(self.save_view)
@@ -404,6 +407,26 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         sidebar_section_tools_layout.addWidget(self.interface_mdiarea_bottomright_vertical)
         sidebar_section_tools.setLayout(sidebar_section_tools_layout)
 
+        self.zoom_panel = QtWidgets.QFrame()
+        self.zoom_panel.setStyleSheet("QFrame { background: palette(base); border: 1px solid palette(mid); border-radius: 0.7em; }")
+        zoom_panel_layout = QtWidgets.QVBoxLayout()
+        zoom_panel_layout.setContentsMargins(14, 14, 14, 14)
+        zoom_panel_layout.setSpacing(10)
+        zoom_panel_title = QtWidgets.QLabel("Zoom")
+        zoom_panel_title.setStyleSheet("QLabel { font-size: 11pt; font-weight: bold; }")
+        self.zoom_value_label = QtWidgets.QLabel("N/A")
+        self.zoom_value_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        self.zoom_value_label.setStyleSheet("QLabel { font-size: 16pt; font-weight: bold; }")
+        self.actual_size_pushbutton = QtWidgets.QPushButton("1:1")
+        self.actual_size_pushbutton.setToolTip("Set active view zoom to 100%")
+        self.actual_size_pushbutton.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+        self.actual_size_pushbutton.setEnabled(False)
+        self.actual_size_pushbutton.clicked.connect(self.set_active_view_actual_size)
+        zoom_panel_layout.addWidget(zoom_panel_title)
+        zoom_panel_layout.addWidget(self.zoom_value_label)
+        zoom_panel_layout.addWidget(self.actual_size_pushbutton, 0, QtCore.Qt.AlignLeft)
+        self.zoom_panel.setLayout(zoom_panel_layout)
+
         self.sidebar_content = QtWidgets.QWidget()
         self.sidebar_content.setMinimumWidth(0)
         self.sidebar_content.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Preferred)
@@ -412,8 +435,7 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         sidebar_layout.setSpacing(16)
         sidebar_layout.addWidget(sidebar_header)
         sidebar_layout.addWidget(sidebar_section_tools)
-        self.image_stats_panel = ImageStatsPanel()
-        sidebar_layout.addWidget(self.image_stats_panel)
+        sidebar_layout.addWidget(self.zoom_panel)
         sidebar_layout.addStretch(1)
         self.sidebar_content.setLayout(sidebar_layout)
 
@@ -426,7 +448,7 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
 
         self.sidebar_panel = QtWidgets.QFrame()
         self.sidebar_panel.setObjectName("sidebarPanel")
-        self.sidebar_panel.setMinimumWidth(360)
+        self.sidebar_panel.setMinimumWidth(260)
         self.sidebar_panel.setStyleSheet("QFrame#sidebarPanel { background: palette(window); border-right: 1px solid palette(mid); }")
         sidebar_panel_layout = QtWidgets.QVBoxLayout()
         sidebar_panel_layout.setContentsMargins(0, 0, 0, 0)
@@ -464,7 +486,7 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         self.workspace_splitter.setStretchFactor(0, 0)
         self.workspace_splitter.setStretchFactor(1, 1)
         self.workspace_splitter.setStretchFactor(2, 0)
-        self.workspace_splitter.setSizes([340, 800, 390])
+        self.workspace_splitter.setSizes([260, 800, 390])
 
         workspace_layout = QtWidgets.QHBoxLayout()
         workspace_layout.setContentsMargins(0, 0, 0, 0)
@@ -595,11 +617,31 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
     def on_last_remaining_subwindow_was_closed(self):
         """Show instructions label of MDIArea."""
         self.label_mdiarea.setVisible(True)
-        self.image_stats_panel.reset()
+        self.update_zoom_panel()
 
     def on_first_subwindow_was_opened(self):
         """Hide instructions label of MDIArea."""
         self.label_mdiarea.setVisible(False)
+
+    def update_zoom_panel(self, window=None):
+        """Refresh the sidebar zoom value for the active view."""
+        image_viewer = self.activeMdiChild
+        if image_viewer is None:
+            self.zoom_value_label.setText("N/A")
+            self.actual_size_pushbutton.setEnabled(False)
+            return
+
+        self.zoom_value_label.setText("%0.f%%" % (image_viewer.zoomFactor * 100,))
+        self.actual_size_pushbutton.setEnabled(True)
+
+    def set_active_view_actual_size(self):
+        """Set the active view zoom to one image pixel per screen pixel."""
+        if not self.activeMdiChild:
+            return
+
+        self.activeMdiChild.actualSize()
+        self.updateStatusBar()
+        self.update_zoom_panel()
 
     def show_interface(self, boolean):
         """Show or hide the application sidebars.
@@ -662,6 +704,9 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
 
     def eventFilter(self, source, event):
         """Handle app-wide shortcuts that must work while image views own focus."""
+        if self._handle_subwindow_reorder_drag(event):
+            return True
+
         if event.type() == QtCore.QEvent.KeyPress and event.key() == QtCore.Qt.Key_H:
             if event.modifiers() in (QtCore.Qt.NoModifier, QtCore.Qt.ShiftModifier):
                 focus_widget = QtWidgets.QApplication.focusWidget()
@@ -679,6 +724,74 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
                     return True
 
         return super().eventFilter(source, event)
+
+    def _handle_subwindow_reorder_drag(self, event):
+        """Swap tiled view order with Shift+drag between subwindows."""
+        event_type = event.type()
+        if event_type == QtCore.QEvent.MouseButtonPress:
+            if event.button() != QtCore.Qt.LeftButton:
+                return False
+            if not event.modifiers() & QtCore.Qt.ShiftModifier:
+                return False
+
+            source_window = self._mdi_subwindow_at_global_pos(event.globalPos())
+            if source_window is None:
+                return False
+
+            self._reorder_drag_source_window = source_window
+            self._reorder_drag_start_global_pos = event.globalPos()
+            self._reorder_drag_active = False
+            self._mdiArea.setActiveSubWindow(source_window)
+            self._mdiArea.viewport().setCursor(QtCore.Qt.ClosedHandCursor)
+            event.accept()
+            return True
+
+        if self._reorder_drag_source_window is None:
+            return False
+
+        if event_type == QtCore.QEvent.MouseMove:
+            if not event.buttons() & QtCore.Qt.LeftButton:
+                self._clear_subwindow_reorder_drag()
+                return False
+
+            drag_distance = (event.globalPos() - self._reorder_drag_start_global_pos).manhattanLength()
+            if drag_distance >= QtWidgets.QApplication.startDragDistance():
+                self._reorder_drag_active = True
+            event.accept()
+            return True
+
+        if event_type == QtCore.QEvent.MouseButtonRelease:
+            if event.button() != QtCore.Qt.LeftButton:
+                return False
+
+            source_window = self._reorder_drag_source_window
+            target_window = self._mdi_subwindow_at_global_pos(event.globalPos())
+            should_swap = self._reorder_drag_active and target_window is not None and target_window != source_window
+            self._clear_subwindow_reorder_drag()
+
+            if should_swap and self._mdiArea.swap_subwindow_order(source_window, target_window):
+                self.refreshPan()
+                self.update_window_highlight(source_window)
+                self.update_window_labels(source_window)
+            event.accept()
+            return True
+
+        return False
+
+    def _clear_subwindow_reorder_drag(self):
+        """Reset temporary state for subwindow order dragging."""
+        self._reorder_drag_source_window = None
+        self._reorder_drag_start_global_pos = None
+        self._reorder_drag_active = False
+        self._mdiArea.viewport().unsetCursor()
+
+    def _mdi_subwindow_at_global_pos(self, global_pos):
+        """Return the MDI subwindow under a global cursor position."""
+        mdi_pos = self._mdiArea.mapFromGlobal(global_pos)
+        for window in reversed(self._mdiArea.ordered_subwindows()):
+            if window.geometry().contains(mdi_pos):
+                return window
+        return None
 
     def set_stopsync_pushbutton(self, boolean):
         """Set state of synchronous zoom/pan and appearance of corresponding interface button.
@@ -980,7 +1093,7 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         child.set_image_paths(filename_main_topleft, filename_topright, filename_bottomleft, filename_bottomright)
 
         # Show filenames
-        child.label_main_topleft.setText(filename_main_topleft)
+        child.refresh_main_label()
         child.label_topright.setText(filename_topright)
         child.label_bottomright.setText(filename_bottomright)
         child.label_bottomleft.setText(filename_bottomleft)
@@ -1011,7 +1124,7 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         child.update_sync_zoom_by(sync_by)
 
         child.fitToWindow()
-        self.update_image_stats_panel()
+        self.update_zoom_panel()
 
         self.statusBar().showMessage("File loaded", 2000)
 
@@ -1143,7 +1256,6 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         """Update displayed coordinates of mouse as N/A upon the mouse leaving the subwindow area."""
         self._label_mouse.setText("View pixel coordinates: ( N/A , N/A )")
         self._label_mouse.adjustSize()
-        self.update_image_stats_mouse_position()
         
     @QtCore.pyqtSlot(QtCore.QPoint)
     def on_positionChanged(self, pos):
@@ -1159,7 +1271,6 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
             point_of_mouse_on_scene = active_view.mapToScene(point_of_mouse_on_viewport.x(), point_of_mouse_on_viewport.y())
 
             self._label_mouse.setText("View pixel coordinates: ( x = %d , y = %d )" % (point_of_mouse_on_scene.x(), point_of_mouse_on_scene.y()))
-            self.update_image_stats_mouse_position(point_of_mouse_on_scene.x(), point_of_mouse_on_scene.y())
             
             pos_qcursor_view = active_view.mapFromGlobal(pos_qcursor_global)
             pos_qcursor_scene = active_view.mapToScene(pos_qcursor_view)
@@ -1168,7 +1279,6 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         else:
             
             self._label_mouse.setText("View pixel coordinates: ( N/A , N/A )")
-            self.update_image_stats_mouse_position()
             
         self._label_mouse.adjustSize()
 
@@ -1512,33 +1622,6 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
 
         statusBar.showMessage("Ready")
 
-    def get_active_image_entries(self, child):
-        """Return metadata entries for every image shown in the active view."""
-        return build_stats_entries(build_image_slots_for_view(child))
-
-    def update_image_stats_panel(self, window=None):
-        """Refresh the sidebar stats with metadata for all images in the active window."""
-        child = self.activeMdiChild
-        if child is None:
-            self.image_stats_panel.reset()
-            return
-
-        zoom_text = f"{child.zoomFactor:.2f}x"
-        self.image_stats_panel.set_zoom(zoom_text)
-        image_entries = [entry.__dict__ for entry in self.get_active_image_entries(child)]
-        self.image_stats_panel.set_images(image_entries)
-
-        if window is not None:
-            self.update_image_stats_mouse_position()
-
-    def update_image_stats_mouse_position(self, x=None, y=None):
-        """Refresh the live mouse coordinate field in the stats panel."""
-        if x is None or y is None:
-            self.image_stats_panel.set_mouse_position("( N/A , N/A )")
-            return
-        self.image_stats_panel.set_mouse_position(f"( x = {int(x)} , y = {int(y)} )")
-
-
     @property
     def activeMdiChild(self):
         """Get active MDI child (:class:`SplitViewMdiChild` or *None*)."""
@@ -1609,7 +1692,7 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         if self._synchZoomAct.isChecked():
             self.synchZoom(mdiChild)
         self.updateStatusBar()
-        self.update_image_stats_panel()
+        self.update_zoom_panel()
 
     def synchPan(self, fromViewer):
         """Synch panning of all subwindowws to the same as *fromViewer*.
