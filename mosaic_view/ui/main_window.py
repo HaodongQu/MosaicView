@@ -34,6 +34,7 @@ try:
     from ..aux_functions import strippedName, toBool, determineSyncSenderDimension, determineSyncAdjustmentFactor
     from ..aux_buttons import ViewerButton
     from ..services.image_loader import load_view_pixmaps
+    from ..services.block_overlay import BlockOverlayError
     from .. import icons_rc
 except ImportError:
     from ui.splitview import SplitView
@@ -42,6 +43,7 @@ except ImportError:
     from aux_functions import strippedName, toBool, determineSyncSenderDimension, determineSyncAdjustmentFactor
     from aux_buttons import ViewerButton
     from services.image_loader import load_view_pixmaps
+    from services.block_overlay import BlockOverlayError
     import icons_rc
 
 
@@ -185,6 +187,7 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         self._mdiArea.subWindowActivated.connect(self.updateMenus)
         self._mdiArea.subWindowActivated.connect(self.auto_tile_subwindows_on_close)
         self._mdiArea.subWindowActivated.connect(self.update_zoom_panel)
+        self._mdiArea.subWindowActivated.connect(self.update_csv_overlay_panel)
         
         
         self.centralwidget_during_fullscreen_pushbutton = QtWidgets.QToolButton() # Needed for users to return the image viewer to the main window if the window of the viewer is lost during fullscreen
@@ -380,7 +383,8 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         self.image_workspace.setLayout(layout_mdiarea)
 
         sidebar_header = QtWidgets.QFrame()
-        sidebar_header.setStyleSheet("QFrame { background: palette(base); border: 1px solid palette(mid); border-radius: 0.8em; }")
+        sidebar_header.setObjectName("sidebarHeaderCard")
+        sidebar_header.setStyleSheet("QFrame#sidebarHeaderCard { background: palette(base); border: 1px solid palette(mid); border-radius: 0.8em; }")
         sidebar_header_layout = QtWidgets.QVBoxLayout()
         sidebar_header_layout.setContentsMargins(14, 14, 14, 14)
         sidebar_header_layout.setSpacing(10)
@@ -390,7 +394,8 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         sidebar_header.setLayout(sidebar_header_layout)
 
         sidebar_section_tools = QtWidgets.QFrame()
-        sidebar_section_tools.setStyleSheet("QFrame { background: palette(base); border: 1px solid palette(mid); border-radius: 0.7em; }")
+        sidebar_section_tools.setObjectName("sidebarToolsCard")
+        sidebar_section_tools.setStyleSheet("QFrame#sidebarToolsCard { background: palette(base); border: 1px solid palette(mid); border-radius: 0.7em; }")
         sidebar_section_tools_layout = QtWidgets.QVBoxLayout()
         sidebar_section_tools_layout.setContentsMargins(14, 14, 14, 14)
         sidebar_section_tools_layout.setSpacing(10)
@@ -408,7 +413,8 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         sidebar_section_tools.setLayout(sidebar_section_tools_layout)
 
         self.zoom_panel = QtWidgets.QFrame()
-        self.zoom_panel.setStyleSheet("QFrame { background: palette(base); border: 1px solid palette(mid); border-radius: 0.7em; }")
+        self.zoom_panel.setObjectName("sidebarZoomCard")
+        self.zoom_panel.setStyleSheet("QFrame#sidebarZoomCard { background: palette(base); border: 1px solid palette(mid); border-radius: 0.7em; }")
         zoom_panel_layout = QtWidgets.QVBoxLayout()
         zoom_panel_layout.setContentsMargins(14, 14, 14, 14)
         zoom_panel_layout.setSpacing(10)
@@ -416,16 +422,75 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         zoom_panel_title.setStyleSheet("QLabel { font-size: 11pt; font-weight: bold; }")
         self.zoom_value_label = QtWidgets.QLabel("N/A")
         self.zoom_value_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        self.zoom_value_label.setStyleSheet("QLabel { font-size: 16pt; font-weight: bold; }")
-        self.actual_size_pushbutton = QtWidgets.QPushButton("1:1")
-        self.actual_size_pushbutton.setToolTip("Set active view zoom to 100%")
-        self.actual_size_pushbutton.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
-        self.actual_size_pushbutton.setEnabled(False)
-        self.actual_size_pushbutton.clicked.connect(self.set_active_view_actual_size)
+        self.zoom_value_label.setStyleSheet("QLabel { font-size: 12pt; font-weight: bold; }")
+        zoom_presets_layout = QtWidgets.QGridLayout()
+        zoom_presets_layout.setContentsMargins(0, 0, 0, 0)
+        zoom_presets_layout.setHorizontalSpacing(6)
+        zoom_presets_layout.setVerticalSpacing(6)
+        self.zoom_preset_buttons = []
+        for index, percentage in enumerate((25, 50, 100, 200)):
+            button = QtWidgets.QPushButton(f"{percentage}%")
+            button.setToolTip(f"Set active view zoom to {percentage}%")
+            button.setEnabled(False)
+            button.clicked.connect(
+                lambda _checked=False, value=percentage: self.set_active_view_zoom(value / 100.0)
+            )
+            zoom_presets_layout.addWidget(button, index // 2, index % 2)
+            self.zoom_preset_buttons.append(button)
         zoom_panel_layout.addWidget(zoom_panel_title)
         zoom_panel_layout.addWidget(self.zoom_value_label)
-        zoom_panel_layout.addWidget(self.actual_size_pushbutton, 0, QtCore.Qt.AlignLeft)
+        zoom_panel_layout.addLayout(zoom_presets_layout)
         self.zoom_panel.setLayout(zoom_panel_layout)
+
+        self.csv_overlay_panel = QtWidgets.QFrame()
+        self.csv_overlay_panel.setObjectName("sidebarCsvCard")
+        self.csv_overlay_panel.setStyleSheet("QFrame#sidebarCsvCard { background: palette(base); border: 1px solid palette(mid); border-radius: 0.7em; }")
+        csv_overlay_layout = QtWidgets.QVBoxLayout()
+        csv_overlay_layout.setContentsMargins(14, 14, 14, 14)
+        csv_overlay_layout.setSpacing(10)
+        csv_overlay_title = QtWidgets.QLabel("CSV Overlay")
+        csv_overlay_title.setStyleSheet("QLabel { font-size: 11pt; font-weight: bold; }")
+        self.csv_overlay_name_label = QtWidgets.QLabel()
+        self.csv_overlay_name_label.setStyleSheet("QLabel { font-weight: bold; }")
+        self.csv_overlay_file_label = QtWidgets.QLabel()
+        self.csv_overlay_file_label.setWordWrap(True)
+        self.csv_overlay_file_label.setStyleSheet("QLabel { color: palette(mid); font-size: 8pt; }")
+        opacity_row = QtWidgets.QHBoxLayout()
+        opacity_row.addWidget(QtWidgets.QLabel("Opacity"))
+        opacity_row.addStretch(1)
+        self.csv_overlay_opacity_label = QtWidgets.QLabel("45%")
+        opacity_row.addWidget(self.csv_overlay_opacity_label)
+        self.csv_overlay_opacity_slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
+        self.csv_overlay_opacity_slider.setRange(0, 100)
+        self.csv_overlay_opacity_slider.setValue(45)
+        self.csv_overlay_opacity_slider.valueChanged.connect(self.set_active_csv_overlay_opacity)
+        self.csv_overlay_border_checkbox = QtWidgets.QCheckBox("Draw borders")
+        self.csv_overlay_border_checkbox.setChecked(True)
+        self.csv_overlay_border_checkbox.toggled.connect(self.set_active_csv_overlay_draw_borders)
+        self.csv_overlay_values_checkbox = QtWidgets.QCheckBox("Show values")
+        self.csv_overlay_values_checkbox.setChecked(False)
+        self.csv_overlay_values_checkbox.toggled.connect(self.set_active_csv_overlay_show_values)
+        label_color_row = QtWidgets.QHBoxLayout()
+        label_color_row.addWidget(QtWidgets.QLabel("Label color"))
+        self.csv_overlay_label_color_combobox = QtWidgets.QComboBox()
+        self.csv_overlay_label_color_combobox.addItems(["White", "Black"])
+        self.csv_overlay_label_color_combobox.currentTextChanged.connect(
+            self.set_active_csv_overlay_label_color
+        )
+        label_color_row.addWidget(self.csv_overlay_label_color_combobox, 1)
+        self.close_csv_overlay_pushbutton = QtWidgets.QPushButton("Close CSV")
+        self.close_csv_overlay_pushbutton.clicked.connect(self.close_active_csv_overlay)
+        csv_overlay_layout.addWidget(csv_overlay_title)
+        csv_overlay_layout.addWidget(self.csv_overlay_name_label)
+        csv_overlay_layout.addWidget(self.csv_overlay_file_label)
+        csv_overlay_layout.addLayout(opacity_row)
+        csv_overlay_layout.addWidget(self.csv_overlay_opacity_slider)
+        csv_overlay_layout.addWidget(self.csv_overlay_border_checkbox)
+        csv_overlay_layout.addWidget(self.csv_overlay_values_checkbox)
+        csv_overlay_layout.addLayout(label_color_row)
+        csv_overlay_layout.addWidget(self.close_csv_overlay_pushbutton)
+        self.csv_overlay_panel.setLayout(csv_overlay_layout)
+        self.csv_overlay_panel.setVisible(False)
 
         self.sidebar_content = QtWidgets.QWidget()
         self.sidebar_content.setMinimumWidth(0)
@@ -436,6 +501,7 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         sidebar_layout.addWidget(sidebar_header)
         sidebar_layout.addWidget(sidebar_section_tools)
         sidebar_layout.addWidget(self.zoom_panel)
+        sidebar_layout.addWidget(self.csv_overlay_panel)
         sidebar_layout.addStretch(1)
         self.sidebar_content.setLayout(sidebar_layout)
 
@@ -610,6 +676,11 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         Args:
             boolean (bool): True to show grayout; False to hide.
         """ 
+        if boolean:
+            self.dragged_grayout_label.setText(
+                "Drop CSV onto the active window to add a data overlay\n\n"
+                "Drop images to create new views"
+            )
         self.dragged_grayout_label.setVisible(boolean)
         if boolean:
             self.dragged_grayout_label.repaint()
@@ -618,6 +689,7 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         """Show instructions label of MDIArea."""
         self.label_mdiarea.setVisible(True)
         self.update_zoom_panel()
+        self.update_csv_overlay_panel()
 
     def on_first_subwindow_was_opened(self):
         """Hide instructions label of MDIArea."""
@@ -628,20 +700,78 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         image_viewer = self.activeMdiChild
         if image_viewer is None:
             self.zoom_value_label.setText("N/A")
-            self.actual_size_pushbutton.setEnabled(False)
+            for button in self.zoom_preset_buttons:
+                button.setEnabled(False)
             return
 
         self.zoom_value_label.setText("%0.f%%" % (image_viewer.zoomFactor * 100,))
-        self.actual_size_pushbutton.setEnabled(True)
+        for button in self.zoom_preset_buttons:
+            button.setEnabled(True)
 
-    def set_active_view_actual_size(self):
-        """Set the active view zoom to one image pixel per screen pixel."""
-        if not self.activeMdiChild:
+    def set_active_view_zoom(self, zoom_factor):
+        """Set the active view to an exact preset zoom factor."""
+        child = self.activeMdiChild
+        if child is None:
             return
-
-        self.activeMdiChild.actualSize()
+        child.scaleImage(float(zoom_factor), combine=False)
         self.updateStatusBar()
         self.update_zoom_panel()
+
+    def update_csv_overlay_panel(self, window=None):
+        """Show CSV controls for the active window when it owns an overlay."""
+        child = self.activeMdiChild
+        data = child.block_overlay_data if child is not None else None
+        self.csv_overlay_panel.setVisible(data is not None)
+        if data is None:
+            return
+
+        self.csv_overlay_name_label.setText(data.name)
+        self.csv_overlay_file_label.setText(os.path.basename(data.source_path))
+        with QtCore.QSignalBlocker(self.csv_overlay_opacity_slider):
+            self.csv_overlay_opacity_slider.setValue(child.block_overlay_opacity)
+        with QtCore.QSignalBlocker(self.csv_overlay_border_checkbox):
+            self.csv_overlay_border_checkbox.setChecked(child.block_overlay_draw_borders)
+        with QtCore.QSignalBlocker(self.csv_overlay_values_checkbox):
+            self.csv_overlay_values_checkbox.setChecked(child.block_overlay_show_values)
+        with QtCore.QSignalBlocker(self.csv_overlay_label_color_combobox):
+            self.csv_overlay_label_color_combobox.setCurrentText(
+                child.block_overlay_label_color.capitalize()
+            )
+        self.csv_overlay_opacity_label.setText(f"{child.block_overlay_opacity}%")
+
+    def set_active_csv_overlay_opacity(self, value):
+        """Apply the sidebar opacity to only the active window."""
+        self.csv_overlay_opacity_label.setText(f"{value}%")
+        child = self.activeMdiChild
+        if child is not None and child.block_overlay_data is not None:
+            child.set_block_overlay_opacity(value)
+
+    def set_active_csv_overlay_draw_borders(self, enabled):
+        """Apply the sidebar border setting to only the active window."""
+        child = self.activeMdiChild
+        if child is not None and child.block_overlay_data is not None:
+            child.set_block_overlay_draw_borders(enabled)
+
+    def set_active_csv_overlay_show_values(self, enabled):
+        """Apply the sidebar value-label setting to only the active window."""
+        child = self.activeMdiChild
+        if child is not None and child.block_overlay_data is not None:
+            child.set_block_overlay_show_values(enabled)
+
+    def set_active_csv_overlay_label_color(self, color):
+        """Apply the sidebar label color to only the active window."""
+        child = self.activeMdiChild
+        if child is not None and child.block_overlay_data is not None:
+            child.set_block_overlay_label_color(color)
+
+    def close_active_csv_overlay(self):
+        """Remove CSV data from only the active window."""
+        child = self.activeMdiChild
+        if child is None or child.block_overlay_data is None:
+            return
+        child.close_block_overlay()
+        self.update_csv_overlay_panel()
+        self.statusBar().showMessage("CSV overlay closed", 2000)
 
     def show_interface(self, boolean):
         """Show or hide the application sidebars.
@@ -1130,7 +1260,33 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
 
     def load_from_dragged_and_dropped_file(self, filename_main_topleft):
         """Load an individual image (convenience function — e.g., from a single emitted single filename)."""
+        if os.path.splitext(filename_main_topleft)[1].lower() == ".csv":
+            self.load_csv_overlay_into_active_window(filename_main_topleft)
+            return
         self.loadFile(filename_main_topleft)
+
+    def load_csv_overlay_into_active_window(self, csv_path):
+        """Load a dropped CSV into only the currently active image window."""
+        child = self.activeMdiChild
+        if child is None:
+            QtWidgets.QMessageBox.warning(
+                self,
+                "CSV overlay",
+                "Open and activate an image window before dropping a CSV file.",
+            )
+            return
+
+        try:
+            data = child.load_block_overlay(csv_path)
+        except BlockOverlayError as error:
+            QtWidgets.QMessageBox.warning(self, "Could not load CSV overlay", str(error))
+            self.statusBar().showMessage("CSV overlay could not be loaded", 4000)
+            return
+
+        self.update_csv_overlay_panel()
+        self.statusBar().showMessage(
+            f"Loaded {data.name} overlay: {len(data.blocks)} blocks", 4000
+        )
 
     def sync_file_browser_to_path(self, filepath):
         """Keep the file browser aligned with the most recently opened image."""

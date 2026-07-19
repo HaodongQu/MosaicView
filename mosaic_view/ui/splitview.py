@@ -30,6 +30,8 @@ try:
     from ..aux_comments import CommentItem
     from ..aux_rulers import RulerItem
     from ..services.overlay import determine_overlay_layout_mode
+    from ..services.block_overlay import load_block_overlay, BlockOverlayError
+    from .block_overlay_item import BlockOverlayItem, BlockOverlayRenderData
 except ImportError:
     from aux_viewing import SynchableGraphicsView
     from aux_trackers import EventTracker, EventTrackerSplitBypassDeadzone
@@ -39,6 +41,8 @@ except ImportError:
     from aux_comments import CommentItem
     from aux_rulers import RulerItem
     from services.overlay import determine_overlay_layout_mode
+    from services.block_overlay import load_block_overlay, BlockOverlayError
+    from ui.block_overlay_item import BlockOverlayItem, BlockOverlayRenderData
 
 
 
@@ -79,6 +83,12 @@ class SplitView(QtWidgets.QFrame):
         self.currentFile = filename_main_topleft
         self.set_image_paths(filename_main_topleft, None, None, None)
         self.custom_title = ""
+        self.block_overlay_data = None
+        self.block_overlay_items = []
+        self.block_overlay_opacity = 45
+        self.block_overlay_draw_borders = True
+        self.block_overlay_show_values = False
+        self.block_overlay_label_color = "white"
 
         self.setWindowFlags(QtCore.Qt.FramelessWindowHint) # Clean appearance
         self.setFrameStyle(QtWidgets.QFrame.NoFrame)
@@ -510,6 +520,71 @@ class SplitView(QtWidgets.QFrame):
         self.label_main_topleft.remove_path = False
         self.label_main_topleft.setText(self.main_label_text())
         self.label_main_topleft.remove_path = remove_path
+
+    def load_block_overlay(self, csv_path):
+        """Load a block CSV as a separate vector layer in this view."""
+        data = load_block_overlay(csv_path)
+        if data.image_width != self.imageWidth or data.image_height != self.imageHeight:
+            raise BlockOverlayError(
+                "CSV dimensions %d x %d do not match the active image dimensions %d x %d."
+                % (data.image_width, data.image_height, self.imageWidth, self.imageHeight)
+            )
+
+        self.close_block_overlay()
+        self.block_overlay_data = data
+        scenes = [self._scene_main_topleft]
+        if self.pixmap_topright_exists:
+            scenes.append(self._scene_topright)
+        if self.pixmap_bottomleft_exists:
+            scenes.append(self._scene_bottomleft)
+        if self.pixmap_bottomright_exists:
+            scenes.append(self._scene_bottomright)
+        render_data = BlockOverlayRenderData(data)
+        for scene in scenes:
+            item = BlockOverlayItem(data, render_data)
+            item.set_fill_opacity(self.block_overlay_opacity / 100.0)
+            item.set_draw_borders(self.block_overlay_draw_borders)
+            item.set_show_values(self.block_overlay_show_values)
+            item.set_label_color(self.block_overlay_label_color)
+            scene.addItem(item)
+            self.block_overlay_items.append(item)
+        return data
+
+    def set_block_overlay_opacity(self, value):
+        """Set this window's CSV layer opacity as an integer percentage."""
+        self.block_overlay_opacity = max(0, min(100, int(value)))
+        for item in self.block_overlay_items:
+            item.set_fill_opacity(self.block_overlay_opacity / 100.0)
+
+    def set_block_overlay_draw_borders(self, enabled):
+        """Set whether this window's CSV layer draws block borders."""
+        self.block_overlay_draw_borders = bool(enabled)
+        for item in self.block_overlay_items:
+            item.set_draw_borders(self.block_overlay_draw_borders)
+
+    def set_block_overlay_show_values(self, enabled):
+        """Set whether this window's CSV layer draws each block value."""
+        self.block_overlay_show_values = bool(enabled)
+        for item in self.block_overlay_items:
+            item.set_show_values(self.block_overlay_show_values)
+
+    def set_block_overlay_label_color(self, color):
+        """Set this window's block value labels to black or white."""
+        color = str(color).lower()
+        if color not in {"black", "white"}:
+            return
+        self.block_overlay_label_color = color
+        for item in self.block_overlay_items:
+            item.set_label_color(color)
+
+    def close_block_overlay(self):
+        """Remove this window's CSV layer without changing its images."""
+        for item in self.block_overlay_items:
+            scene = item.scene()
+            if scene is not None:
+                scene.removeItem(item)
+        self.block_overlay_items = []
+        self.block_overlay_data = None
 
     def on_right_click_custom_title(self):
         """Prompt for a custom title for this view."""
