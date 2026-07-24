@@ -26,7 +26,7 @@ class QMdiAreaWithCustomSignals(QtWidgets.QMdiArea):
         Methods for arranging the subwindows vertically and horizontally, and to track the history of the arrangement.
     """
 
-    file_path_dragged_and_dropped = QtCore.pyqtSignal(str)
+    file_path_dragged_and_dropped = QtCore.pyqtSignal(str, object)
     file_path_dragged = QtCore.pyqtSignal(bool)
     first_subwindow_was_opened = QtCore.pyqtSignal()
     last_remaining_subwindow_was_closed = QtCore.pyqtSignal()
@@ -191,14 +191,23 @@ class QMdiAreaWithCustomSignals(QtWidgets.QMdiArea):
         self.file_path_dragged.emit(False)
 
         urls = event.mimeData().urls()
+        target_window = self.subwindow_at_position(event.pos())
 
         if urls:
             for url in urls:
                 file_path = url.toLocalFile()
-                self.file_path_dragged_and_dropped.emit(file_path)
+                self.file_path_dragged_and_dropped.emit(file_path, target_window)
             event.accept()
         else:
             event.ignore()
+
+    def subwindow_at_position(self, position):
+        """Return the topmost MDI subwindow beneath a viewport-relative point."""
+        windows = self.subWindowList(QtWidgets.QMdiArea.StackingOrder)
+        for window in reversed(windows):
+            if window.isVisible() and window.geometry().contains(position):
+                return window
+        return None
 
     def subwindow_was_activated(self, window): 
         """Signal if first subwindow has been activated or if last remaining subwindow has been closed.

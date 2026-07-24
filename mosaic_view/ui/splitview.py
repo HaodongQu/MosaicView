@@ -89,6 +89,8 @@ class SplitView(QtWidgets.QFrame):
         self.block_overlay_draw_borders = True
         self.block_overlay_show_values = False
         self.block_overlay_label_color = "white"
+        self.rectangle_mark_items = []
+        self.rectangle_mark_preview_items = []
 
         self.setWindowFlags(QtCore.Qt.FramelessWindowHint) # Clean appearance
         self.setFrameStyle(QtWidgets.QFrame.NoFrame)
@@ -585,6 +587,88 @@ class SplitView(QtWidgets.QFrame):
                 scene.removeItem(item)
         self.block_overlay_items = []
         self.block_overlay_data = None
+
+    def _image_scenes(self):
+        """Return scenes that currently contain an image."""
+        scenes = [self._scene_main_topleft]
+        if self.pixmap_topright_exists:
+            scenes.append(self._scene_topright)
+        if self.pixmap_bottomleft_exists:
+            scenes.append(self._scene_bottomleft)
+        if self.pixmap_bottomright_exists:
+            scenes.append(self._scene_bottomright)
+        return scenes
+
+    @staticmethod
+    def _rectangle_mark_pen(width, line_style, color):
+        """Build a cosmetic pen for a synchronized rectangle mark."""
+        styles = {
+            "solid": QtCore.Qt.SolidLine,
+            "dashed": QtCore.Qt.DashLine,
+            "dotted": QtCore.Qt.DotLine,
+        }
+        pen = QtGui.QPen(QtGui.QColor(color))
+        pen.setWidth(max(1, int(width)))
+        pen.setCosmetic(True)
+        pen.setStyle(styles.get(str(line_style).lower(), QtCore.Qt.SolidLine))
+        pen.setJoinStyle(QtCore.Qt.MiterJoin)
+        return pen
+
+    def _create_rectangle_mark_items(self, rect, width, line_style, color):
+        """Create matching rectangle items in each image scene."""
+        items = []
+        pen = self._rectangle_mark_pen(width, line_style, color)
+        for scene in self._image_scenes():
+            item = QtWidgets.QGraphicsRectItem(QtCore.QRectF(rect))
+            item.setPen(pen)
+            item.setBrush(QtGui.QBrush(QtCore.Qt.NoBrush))
+            item.setZValue(30.0)
+            scene.addItem(item)
+            items.append(item)
+        return items
+
+    def set_rectangle_mark_preview(self, rect, width, line_style, color):
+        """Replace the temporary rectangle shown while the user drags."""
+        self.clear_rectangle_mark_preview()
+        self.rectangle_mark_preview_items = self._create_rectangle_mark_items(
+            rect, width, line_style, color
+        )
+
+    def commit_rectangle_mark_preview(self):
+        """Promote the current preview rectangle to a persistent mark."""
+        self.rectangle_mark_items.append(list(self.rectangle_mark_preview_items))
+        self.rectangle_mark_preview_items = []
+
+    def clear_rectangle_mark_preview(self):
+        """Remove this window's temporary rectangle mark."""
+        for item in self.rectangle_mark_preview_items:
+            if item.scene() is not None:
+                item.scene().removeItem(item)
+        self.rectangle_mark_preview_items = []
+
+    def add_rectangle_mark(self, rect, width, line_style, color):
+        """Add an existing synchronized rectangle mark to this window."""
+        self.rectangle_mark_items.append(
+            self._create_rectangle_mark_items(rect, width, line_style, color)
+        )
+
+    def remove_rectangle_mark(self, index):
+        """Remove one synchronized rectangle mark by its global list index."""
+        if index < 0 or index >= len(self.rectangle_mark_items):
+            return
+        items = self.rectangle_mark_items.pop(index)
+        for item in items:
+            if item.scene() is not None:
+                item.scene().removeItem(item)
+
+    def clear_rectangle_marks(self):
+        """Remove all persistent and temporary rectangle marks."""
+        self.clear_rectangle_mark_preview()
+        for items in self.rectangle_mark_items:
+            for item in items:
+                if item.scene() is not None:
+                    item.scene().removeItem(item)
+        self.rectangle_mark_items = []
 
     def on_right_click_custom_title(self):
         """Prompt for a custom title for this view."""

@@ -137,6 +137,10 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         self._reorder_drag_source_window = None
         self._reorder_drag_start_global_pos = None
         self._reorder_drag_active = False
+        self._rectangle_marks = []
+        self._rectangle_drag_start = None
+        self._rectangle_drag_style = None
+        self.rectangle_mark_color = QtGui.QColor("#ff3b30")
 
         self.escape_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence("Escape"), self)
         self.escape_shortcut.activated.connect(self.set_fullscreen_off)
@@ -188,6 +192,7 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         self._mdiArea.subWindowActivated.connect(self.auto_tile_subwindows_on_close)
         self._mdiArea.subWindowActivated.connect(self.update_zoom_panel)
         self._mdiArea.subWindowActivated.connect(self.update_csv_overlay_panel)
+        self._mdiArea.subWindowActivated.connect(self.update_rectangle_mark_controls)
         
         
         self.centralwidget_during_fullscreen_pushbutton = QtWidgets.QToolButton() # Needed for users to return the image viewer to the main window if the window of the viewer is lost during fullscreen
@@ -428,7 +433,7 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         zoom_presets_layout.setHorizontalSpacing(6)
         zoom_presets_layout.setVerticalSpacing(6)
         self.zoom_preset_buttons = []
-        for index, percentage in enumerate((25, 50, 100, 200)):
+        for index, percentage in enumerate((50, 100, 150, 200)):
             button = QtWidgets.QPushButton(f"{percentage}%")
             button.setToolTip(f"Set active view zoom to {percentage}%")
             button.setEnabled(False)
@@ -441,6 +446,53 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         zoom_panel_layout.addWidget(self.zoom_value_label)
         zoom_panel_layout.addLayout(zoom_presets_layout)
         self.zoom_panel.setLayout(zoom_panel_layout)
+
+        self.rectangle_mark_panel = QtWidgets.QFrame()
+        self.rectangle_mark_panel.setObjectName("sidebarRectangleMarkCard")
+        self.rectangle_mark_panel.setStyleSheet("QFrame#sidebarRectangleMarkCard { background: palette(base); border: 1px solid palette(mid); border-radius: 0.7em; }")
+        rectangle_mark_layout = QtWidgets.QVBoxLayout()
+        rectangle_mark_layout.setContentsMargins(14, 14, 14, 14)
+        rectangle_mark_layout.setSpacing(10)
+        rectangle_mark_title = QtWidgets.QLabel("Rectangle Mark")
+        rectangle_mark_title.setStyleSheet("QLabel { font-size: 11pt; font-weight: bold; }")
+        self.rectangle_mark_toggle_button = QtWidgets.QPushButton("Start drawing")
+        self.rectangle_mark_toggle_button.setCheckable(True)
+        self.rectangle_mark_toggle_button.setEnabled(False)
+        self.rectangle_mark_toggle_button.toggled.connect(self.set_rectangle_mark_mode)
+        width_row = QtWidgets.QHBoxLayout()
+        width_row.addWidget(QtWidgets.QLabel("Line width"))
+        self.rectangle_mark_width_spinbox = QtWidgets.QSpinBox()
+        self.rectangle_mark_width_spinbox.setRange(1, 10)
+        self.rectangle_mark_width_spinbox.setValue(2)
+        self.rectangle_mark_width_spinbox.setSuffix(" px")
+        width_row.addWidget(self.rectangle_mark_width_spinbox, 1)
+        style_row = QtWidgets.QHBoxLayout()
+        style_row.addWidget(QtWidgets.QLabel("Line style"))
+        self.rectangle_mark_style_combobox = QtWidgets.QComboBox()
+        self.rectangle_mark_style_combobox.addItems(["Solid", "Dashed", "Dotted"])
+        style_row.addWidget(self.rectangle_mark_style_combobox, 1)
+        color_row = QtWidgets.QHBoxLayout()
+        color_row.addWidget(QtWidgets.QLabel("Color"))
+        self.rectangle_mark_color_button = QtWidgets.QPushButton()
+        self.rectangle_mark_color_button.setToolTip("Choose rectangle color")
+        self.rectangle_mark_color_button.setFixedSize(38, 24)
+        self.rectangle_mark_color_button.clicked.connect(self.choose_rectangle_mark_color)
+        color_row.addStretch(1)
+        color_row.addWidget(self.rectangle_mark_color_button)
+        self.rectangle_mark_selector = QtWidgets.QComboBox()
+        self.rectangle_mark_selector.setEnabled(False)
+        self.delete_rectangle_mark_button = QtWidgets.QPushButton("Delete selected mark")
+        self.delete_rectangle_mark_button.setEnabled(False)
+        self.delete_rectangle_mark_button.clicked.connect(self.delete_selected_rectangle_mark)
+        rectangle_mark_layout.addWidget(rectangle_mark_title)
+        rectangle_mark_layout.addWidget(self.rectangle_mark_toggle_button)
+        rectangle_mark_layout.addLayout(width_row)
+        rectangle_mark_layout.addLayout(style_row)
+        rectangle_mark_layout.addLayout(color_row)
+        rectangle_mark_layout.addWidget(self.rectangle_mark_selector)
+        rectangle_mark_layout.addWidget(self.delete_rectangle_mark_button)
+        self.rectangle_mark_panel.setLayout(rectangle_mark_layout)
+        self.update_rectangle_mark_color_button()
 
         self.csv_overlay_panel = QtWidgets.QFrame()
         self.csv_overlay_panel.setObjectName("sidebarCsvCard")
@@ -501,6 +553,7 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         sidebar_layout.addWidget(sidebar_header)
         sidebar_layout.addWidget(sidebar_section_tools)
         sidebar_layout.addWidget(self.zoom_panel)
+        sidebar_layout.addWidget(self.rectangle_mark_panel)
         sidebar_layout.addWidget(self.csv_overlay_panel)
         sidebar_layout.addStretch(1)
         self.sidebar_content.setLayout(sidebar_layout)
@@ -678,7 +731,7 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         """ 
         if boolean:
             self.dragged_grayout_label.setText(
-                "Drop CSV onto the active window to add a data overlay\n\n"
+                "Drop CSV onto the target image window to add a data overlay\n\n"
                 "Drop images to create new views"
             )
         self.dragged_grayout_label.setVisible(boolean)
@@ -716,6 +769,118 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         child.scaleImage(float(zoom_factor), combine=False)
         self.updateStatusBar()
         self.update_zoom_panel()
+
+    def update_rectangle_mark_controls(self, window=None):
+        """Enable rectangle drawing controls when an image window is active."""
+        has_active_window = self.activeMdiChild is not None
+        self.rectangle_mark_toggle_button.setEnabled(has_active_window)
+        has_marks = bool(self._rectangle_marks)
+        self.rectangle_mark_selector.setEnabled(has_marks)
+        self.delete_rectangle_mark_button.setEnabled(has_marks)
+        if not has_active_window and self.rectangle_mark_toggle_button.isChecked():
+            self.rectangle_mark_toggle_button.setChecked(False)
+        self.update_rectangle_selection_cursor()
+
+    def set_rectangle_mark_mode(self, enabled):
+        """Enter or leave synchronized rectangle drawing mode."""
+        self.rectangle_mark_toggle_button.setText("Drawing enabled" if enabled else "Start drawing")
+        if not enabled:
+            self._cancel_rectangle_drag()
+        self.update_rectangle_selection_cursor()
+
+    def update_rectangle_selection_cursor(self):
+        """Show a crosshair cursor on image views while drawing mode is active."""
+        drawing = self.rectangle_mark_toggle_button.isChecked()
+        for window in self._mdiArea.subWindowList():
+            viewport = window.widget()._view_main_topleft.viewport()
+            if drawing and window is self._mdiArea.activeSubWindow():
+                viewport.setCursor(QtCore.Qt.CrossCursor)
+            else:
+                viewport.unsetCursor()
+
+    def choose_rectangle_mark_color(self):
+        """Choose the color used for newly drawn synchronized rectangles."""
+        color = QtWidgets.QColorDialog.getColor(
+            self.rectangle_mark_color, self, "Rectangle color"
+        )
+        if not color.isValid():
+            return
+        self.rectangle_mark_color = color
+        self.update_rectangle_mark_color_button()
+
+    def update_rectangle_mark_color_button(self):
+        """Refresh the rectangle color button swatch."""
+        color = self.rectangle_mark_color.name()
+        self.rectangle_mark_color_button.setText("")
+        self.rectangle_mark_color_button.setToolTip(f"Choose rectangle color ({color.upper()})")
+        self.rectangle_mark_color_button.setStyleSheet(
+            f"QPushButton {{ background-color: {color}; border: 1px solid palette(mid); border-radius: 4px; }}"
+        )
+
+    def _all_image_children(self):
+        """Return every currently open image-view widget."""
+        return [window.widget() for window in self._mdiArea.subWindowList()]
+
+    def _rectangle_point_from_global(self, child, global_pos):
+        """Map a global cursor position into clamped main-image coordinates."""
+        view = child._view_main_topleft
+        viewport_pos = view.viewport().mapFromGlobal(global_pos)
+        point = view.mapToScene(viewport_pos)
+        return QtCore.QPointF(
+            max(0.0, min(point.x(), float(child.imageWidth))),
+            max(0.0, min(point.y(), float(child.imageHeight))),
+        )
+
+    def _rectangle_mark_style(self):
+        """Return the current sidebar settings for a new rectangle."""
+        return (
+            self.rectangle_mark_width_spinbox.value(),
+            self.rectangle_mark_style_combobox.currentText().lower(),
+            self.rectangle_mark_color.name(),
+        )
+
+    def _sync_rectangle_preview(self, rect):
+        """Show the in-progress rectangle in every open image window."""
+        width, line_style, color = self._rectangle_drag_style
+        for child in self._all_image_children():
+            child.set_rectangle_mark_preview(rect, width, line_style, color)
+
+    def _cancel_rectangle_drag(self):
+        """Cancel and remove an in-progress synchronized rectangle."""
+        for child in self._all_image_children():
+            child.clear_rectangle_mark_preview()
+        self._rectangle_drag_start = None
+        self._rectangle_drag_style = None
+
+    def refresh_rectangle_mark_selector(self, selected_index=None):
+        """Refresh the list used to select one synchronized mark for deletion."""
+        if selected_index is None:
+            selected_index = self.rectangle_mark_selector.currentIndex()
+        with QtCore.QSignalBlocker(self.rectangle_mark_selector):
+            self.rectangle_mark_selector.clear()
+            for index, (rect, _width, _line_style, _color) in enumerate(self._rectangle_marks, 1):
+                self.rectangle_mark_selector.addItem(
+                    "Mark %d: (%d, %d) %d×%d"
+                    % (index, rect.x(), rect.y(), rect.width(), rect.height())
+                )
+            if self._rectangle_marks:
+                self.rectangle_mark_selector.setCurrentIndex(
+                    max(0, min(selected_index, len(self._rectangle_marks) - 1))
+                )
+        has_marks = bool(self._rectangle_marks)
+        self.rectangle_mark_selector.setEnabled(has_marks)
+        self.delete_rectangle_mark_button.setEnabled(has_marks)
+
+    def delete_selected_rectangle_mark(self):
+        """Delete only the rectangle selected in the sidebar list."""
+        index = self.rectangle_mark_selector.currentIndex()
+        if index < 0 or index >= len(self._rectangle_marks):
+            return
+        self._rectangle_marks.pop(index)
+        for child in self._all_image_children():
+            child.remove_rectangle_mark(index)
+        self.refresh_rectangle_mark_selector(min(index, len(self._rectangle_marks) - 1))
+        self.statusBar().showMessage("Rectangle mark deleted", 2000)
 
     def update_csv_overlay_panel(self, window=None):
         """Show CSV controls for the active window when it owns an overlay."""
@@ -834,6 +999,9 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
 
     def eventFilter(self, source, event):
         """Handle app-wide shortcuts that must work while image views own focus."""
+        if self._handle_rectangle_mark_drag(source, event):
+            return True
+
         if self._handle_subwindow_reorder_drag(event):
             return True
 
@@ -854,6 +1022,60 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
                     return True
 
         return super().eventFilter(source, event)
+
+    def _handle_rectangle_mark_drag(self, source, event):
+        """Draw a rectangle in image coordinates and synchronize it to all windows."""
+        toggle_button = getattr(self, "rectangle_mark_toggle_button", None)
+        if toggle_button is None or not toggle_button.isChecked():
+            return False
+
+        child = self.activeMdiChild
+        if child is None:
+            return False
+
+        event_type = event.type()
+        viewport = child._view_main_topleft.viewport()
+        if event_type == QtCore.QEvent.MouseButtonPress:
+            if source is not viewport or event.button() != QtCore.Qt.LeftButton:
+                return False
+            self._rectangle_drag_start = self._rectangle_point_from_global(child, event.globalPos())
+            self._rectangle_drag_style = self._rectangle_mark_style()
+            self._sync_rectangle_preview(QtCore.QRectF(self._rectangle_drag_start, self._rectangle_drag_start))
+            event.accept()
+            return True
+
+        if self._rectangle_drag_start is None:
+            return False
+
+        if event_type == QtCore.QEvent.MouseMove:
+            if not event.buttons() & QtCore.Qt.LeftButton:
+                self._cancel_rectangle_drag()
+                return False
+            current = self._rectangle_point_from_global(child, event.globalPos())
+            self._sync_rectangle_preview(QtCore.QRectF(self._rectangle_drag_start, current).normalized())
+            event.accept()
+            return True
+
+        if event_type == QtCore.QEvent.MouseButtonRelease and event.button() == QtCore.Qt.LeftButton:
+            current = self._rectangle_point_from_global(child, event.globalPos())
+            rect = QtCore.QRectF(self._rectangle_drag_start, current).normalized()
+            style = self._rectangle_drag_style
+            if rect.width() >= 1.0 and rect.height() >= 1.0:
+                self._sync_rectangle_preview(rect)
+                for image_child in self._all_image_children():
+                    image_child.commit_rectangle_mark_preview()
+                self._rectangle_marks.append((QtCore.QRectF(rect),) + style)
+                self.refresh_rectangle_mark_selector(len(self._rectangle_marks) - 1)
+                self.statusBar().showMessage("Rectangle mark added", 2000)
+            else:
+                for image_child in self._all_image_children():
+                    image_child.clear_rectangle_mark_preview()
+            self._rectangle_drag_start = None
+            self._rectangle_drag_style = None
+            event.accept()
+            return True
+
+        return False
 
     def _handle_subwindow_reorder_drag(self, event):
         """Swap tiled view order with Shift+drag between subwindows."""
@@ -1258,24 +1480,26 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
 
         self.statusBar().showMessage("File loaded", 2000)
 
-    def load_from_dragged_and_dropped_file(self, filename_main_topleft):
+    def load_from_dragged_and_dropped_file(self, filename_main_topleft, target_window=None):
         """Load an individual image (convenience function — e.g., from a single emitted single filename)."""
         if os.path.splitext(filename_main_topleft)[1].lower() == ".csv":
-            self.load_csv_overlay_into_active_window(filename_main_topleft)
+            self.load_csv_overlay_into_target_window(filename_main_topleft, target_window)
             return
         self.loadFile(filename_main_topleft)
 
-    def load_csv_overlay_into_active_window(self, csv_path):
-        """Load a dropped CSV into only the currently active image window."""
-        child = self.activeMdiChild
-        if child is None:
+    def load_csv_overlay_into_target_window(self, csv_path, target_window):
+        """Load a dropped CSV into the image window beneath the drop position."""
+        live_windows = self._mdiArea.subWindowList()
+        if target_window is None or target_window not in live_windows:
             QtWidgets.QMessageBox.warning(
                 self,
                 "CSV overlay",
-                "Open and activate an image window before dropping a CSV file.",
+                "Drop the CSV directly onto the image window that should receive it.",
             )
             return
 
+        self._mdiArea.setActiveSubWindow(target_window)
+        child = target_window.widget()
         try:
             data = child.load_block_overlay(csv_path)
         except BlockOverlayError as error:
@@ -1339,6 +1563,8 @@ class MultiViewMainWindow(QtWidgets.QMainWindow):
         child.sync_this_pan = True
         
         self._mdiArea.addSubWindow(child, QtCore.Qt.FramelessWindowHint) # LVM: No frame, starts fitted
+        for rect, width, line_style, color in self._rectangle_marks:
+            child.add_rectangle_mark(rect, width, line_style, color)
 
         child.scrollChanged.connect(self.panChanged)
         child.transformChanged.connect(self.zoomChanged)
